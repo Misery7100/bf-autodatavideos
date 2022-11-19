@@ -4,7 +4,7 @@ Automatized data videos creation using sofascore and plainly
 
 ## Structure
 
-<-- lucidchart diagram -->
+<img src="./img/bf-autodatavideos.png">
 
 ## Main Logic
 
@@ -27,10 +27,14 @@ No description given.
 ## Crawler
 _based on: AWS EC2_
 
+**Notes**
+
+- What about celery for pull scheduling?
+
 ## Messaging Interface
 _based on: AWS SQS_
 
-__Message format__
+**Message format**
 
 ```json
 {
@@ -39,5 +43,9 @@ __Message format__
 }
 ```
 
+**Notes**
+
 ## Handler
 _based on: AWS Lambda_
+
+**Notes**
