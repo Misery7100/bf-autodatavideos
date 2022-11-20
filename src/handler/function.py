@@ -3,7 +3,7 @@
 def lambda_handler(event, context):
 
     # some change
-    x = 10
+    x = 12
     
     return {
         'statusCode': 200,
