@@ -19,6 +19,14 @@ def main():
     engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common,public'})
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
+    # single check
+    new_events = extract_all_events_tournament(tournament_id=41087, season=16)
+
+    with Session(engine) as session:
+        records = [EventsGlobal(**event) for event in new_events]
+        session.add_all(records)
+        session.commit()
+
     # while True:
     #     new_events = extract_all_events_tournament(tournament_id=41087, season=16)
 
