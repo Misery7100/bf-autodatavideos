@@ -17,7 +17,7 @@ jobs:
       - name: checkout source code
         uses: actions/checkout@v2
       - name: default deploy
-        uses: jsmrcaga/action-easy-lambda-deploy@latest
+        uses: jsmrcaga/action-easy-lambda-deploy@v0.0.3
         with:
           function_name: bf-autodatavideos-handler
           region: ${{ secrets.AWS_REGION }}
