@@ -2,13 +2,9 @@ name: deploy to lambda
 
 on:
   push:
-    # paths:
-    #   - src/handler/**
     branches:
       - dev
   pull_request:
-    # paths:
-    #   - src/handler/**
     branches:
       - dev
 
@@ -34,3 +30,6 @@ jobs:
           debug: true
           env:
             AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+
+# paths:
+#   - src/handler/**
