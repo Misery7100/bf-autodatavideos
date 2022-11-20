@@ -1,3 +1,4 @@
+import boto3
 import sqlalchemy as sa
 import time
 
@@ -20,12 +21,20 @@ def main():
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
     # single check
-    new_events = extract_all_events_tournament(tournament_id=41087, season=16)
+    # new_events = extract_all_events_tournament(tournament_id=41087, season=16)
 
-    with Session(engine) as session:
-        records = [EventsGlobal(**event) for event in new_events]
-        session.add_all(records)
-        session.commit()
+    # with Session(engine) as session:
+    #     records = [EventsGlobal(**event) for event in new_events]
+    #     session.add_all(records)
+    #     session.commit()
+
+    # boto check
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName='bf-autodatavideos-mi')
+    queue.send_message(MessageBody="line-up-event", MessageAttributes={
+        "event_id" : 10230541,
+        "processing_type" : "line-up"
+    })
 
     # while True:
     #     new_events = extract_all_events_tournament(tournament_id=41087, season=16)
