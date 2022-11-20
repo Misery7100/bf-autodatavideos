@@ -1,22 +1,27 @@
-name: deploy to lambda
+name: Deploy to AWS Lambda
 
 on:
   push:
     branches:
       - dev
+    paths:
+      - src/handler/**
   pull_request:
     branches:
       - dev
+    paths:
+      - src/handler/**
 
 jobs:
 
-  deploy_source:
-    name: deploy lambda from source
+  deploy_aws_lambda:
+    name: Deploy to AWS Lambda from source
     runs-on: ubuntu-latest
+    
     steps:
-      - name: checkout source code
+      - name: Checkout source code
         uses: actions/checkout@v2
-      - name: default deploy
+      - name: Deploy as update-code via AWS CLI
         uses: jsmrcaga/action-easy-lambda-deploy@v0.0.3
         with:
           function_name: bf-autodatavideos-handler
@@ -27,6 +32,3 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-
-# paths:
-#   - src/handler/**

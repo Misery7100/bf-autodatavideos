@@ -1,0 +1,34 @@
+name: Deploy to AWS EC2
+   
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - src/crawler/**
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - src/crawler/**
+
+jobs:
+
+  deploy_aws_ec2:
+    name: Deploy to AWS EC2 from source
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pull and rebuild remotely
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST_DNS }}
+          username: admin
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/bf-autodatavideos
+            git pull
+            cd src/crawler
+            docker stop bfautodatavideos-crawler
+            docker build . --pull --rm -t bfautodatavideos-crawler
+            docker run -d bfautodatavideos-crawler --rm

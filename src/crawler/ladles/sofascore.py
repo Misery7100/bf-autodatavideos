@@ -2,18 +2,24 @@ import time
 import requests as rq
 
 from typing import List, Dict, Any, Collection
-from ..utils.common import DotDict
+from utils.common import DotDict
 
 # ---------------------------- #
 
 SOFASCORE_API = 'https://api.sofascore.com/api/v1'
+HEADERS = {
+    'Content-Type' : 'application/json',
+    'Accept' : '*/*',
+    'Connection' : 'keep-alive'
+
+}
 
 # ---------------------------- #
 
 def extract_one_page_events_tournament(tournament_id: int, season: int, page: int = 0) -> Collection[Dict[str, Any]]:
     
     url = f"{SOFASCORE_API}/unique-tournament/{season}/season/{tournament_id}/events/next/{page}"
-    response = rq.get(url)
+    response = rq.get(url, headers=HEADERS)
     data = response.json()
 
     parsed_events = list(map(parse_event_data, data['events']))
@@ -37,7 +43,7 @@ def extract_all_events_tournament(tournament_id: int, season: int) -> Collection
                                         )
         parsed_events += new_page_events
         page += 1
-        time.sleep(0.05)
+        time.sleep(1)
     
     return parsed_events
 
