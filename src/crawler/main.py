@@ -14,6 +14,8 @@ from utils.db import build_connection_url
 def main():
 
     config = read_yaml('config.yml')
+
+    # rds connection
     dbcreds = read_yaml('secrets/databases.yml').default
     dburl = build_connection_url(**dbcreds)
 
@@ -29,12 +31,25 @@ def main():
     #     session.commit()
 
     # boto check
-    sqs = boto3.resource('sqs')
+    sqs = boto3.resource('sqs', region_name='eu-central-1')
     queue = sqs.get_queue_by_name(QueueName='bf-autodatavideos-mi')
-    queue.send_message(MessageBody="line-up-event", MessageAttributes={
-        "event_id" : 10230541,
-        "processing_type" : "line-up"
-    })
+
+    for i in range(30):
+        queue.send_message(MessageBody="line-up-event", MessageAttributes={
+            "event_id" : {
+                "DataType" : "Number",
+                "StringValue" : "10230541"
+            },
+            "processing_type" : {
+                "DataType" : "String",
+                "StringValue" : "line-up"
+            },
+            "number_artificial" : {
+                "DataType" : "Number",
+                "StringValue" : str(i + 1)
+            }
+        })
+        time.sleep(1)
 
     # while True:
     #     new_events = extract_all_events_tournament(tournament_id=41087, season=16)
