@@ -21,7 +21,7 @@ def lambda_handler(event, context):
     dburl = build_connection_url(**dbcreds)
 
     # check all tables exist
-    engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common,public'})
+    engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common'})
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
     messages = event.get('Records')
