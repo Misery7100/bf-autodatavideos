@@ -57,7 +57,7 @@ def lambda_handler(event, context):
                     additional_data=additional_data
                 )
 
-                # call plainly
+                # call plainly API
 
                 print(lineup_extracted)
 
@@ -84,7 +84,7 @@ def lambda_handler(event, context):
                     additional_data=additional_data
                 )
 
-                # call plainly
+                # call plainly API
 
                 print(result_extracted)
         

@@ -36,7 +36,7 @@ jobs:
         with:
           function_name: bf-autodatavideos-handler
           region: ${{ secrets.AWS_REGION }}
-          zip_command: zip -r easy-lambda-deploy.zip src/handler/
+          zip_command: cd src/handler; zip -r easy-lambda-deploy.zip ./
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
