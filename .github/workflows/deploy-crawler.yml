@@ -5,12 +5,14 @@ on:
     branches:
       - dev
     paths:
-      - src/crawler/**
+      - src/**
+      - '!src/handler/**'
   pull_request:
     branches:
       - dev
     paths:
-      - src/crawler/**
+      - src/**
+      - '!src/handler/**'
 
 jobs:
 
@@ -28,7 +30,7 @@ jobs:
           script: |
             cd ~/bf-autodatavideos
             git pull
-            cd src/crawler
+            cd src
             docker stop bfautodatavideos-crawler
             docker build . --pull --rm -t bfautodatavideos-crawler
             docker run -d --rm bfautodatavideos-crawler
