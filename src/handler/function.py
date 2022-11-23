@@ -58,6 +58,7 @@ def lambda_handler(event, context):
                 )
 
                 # call plainly API
+                # ----
 
                 print(lineup_extracted)
 

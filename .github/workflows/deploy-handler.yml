@@ -7,12 +7,16 @@ on:
     paths:
       - src/**
       - '!src/crawler/**'
+      - '!src/.dockerignore'
+      - '!src/Dockerfile'
   pull_request:
     branches:
       - dev
     paths:
       - src/**
       - '!src/crawler/**'
+      - '!src/.dockerignore'
+      - '!src/Dockerfile'
 
 jobs:
 
@@ -22,7 +26,11 @@ jobs:
     
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Switch python to 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Rebuild structure
         run: |
           cd src
