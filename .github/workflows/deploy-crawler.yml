@@ -33,4 +33,4 @@ jobs:
             cd src
             docker stop crawler
             docker build . --pull --rm -t bfautodatavideos-crawler
-            docker run  -name crawler -d --rm bfautodatavideos-crawler
+            docker run  --name crawler -d --rm bfautodatavideos-crawler
