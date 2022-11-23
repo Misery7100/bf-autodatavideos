@@ -31,6 +31,6 @@ jobs:
             cd ~/bf-autodatavideos
             git pull
             cd src
-            docker stop bfautodatavideos-crawler
+            docker stop crawler
             docker build . --pull --rm -t bfautodatavideos-crawler
-            docker run -d --rm bfautodatavideos-crawler
+            docker run  -name crawler -d --rm bfautodatavideos-crawler
