@@ -28,6 +28,7 @@ jobs:
           cd src
           cp -r database handler/database/
           cp -r core handler/core/
+          cd handler
           pip install -r requirements.txt --target ./
 
       - name: Deploy as update-code via AWS CLI
