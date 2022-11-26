@@ -18,7 +18,7 @@ from core.sofascore import extract_all_events_tournament, extract_tournament_biw
 
 def get_event_updates(
         
-        dburl: str, 
+        dbengine: sa.engine.Engine, 
         period: int = 300
     
     ):
@@ -27,14 +27,7 @@ def get_event_updates(
 
         # tournament and season hardcoded for a while
         new_events = extract_all_events_tournament(tournament_id=41087, season=16)
-
         extracted_event_ids = set(map(lambda x: x['event_id'], new_events))
-        dbengine = sa.create_engine(
-                        dburl, 
-                        echo=True, 
-                        future=True,
-                        connect_args={'options': '-csearch_path=common,public'}
-                    )
 
         with Session(dbengine) as session:
 
@@ -69,14 +62,13 @@ def get_event_updates(
             session.commit()
             session.close()
 
-        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
 
 def schedule_result_calls(
 
-        dburl: str,
+        dbengine: sa.engine.Engine,
         region: str,
         queue_name: str,
         period: int = 30
@@ -87,12 +79,6 @@ def schedule_result_calls(
 
     while True:
         now_timestamp = datetime.now().timestamp()
-        dbengine = sa.create_engine(
-                        dburl, 
-                        echo=True, 
-                        future=True,
-                        connect_args={'options': '-csearch_path=common,public'}
-                    )
 
         with Session(dbengine) as session:
     
@@ -120,14 +106,13 @@ def schedule_result_calls(
             
             session.close()
         
-        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
 
 def schedule_lineup_calls(
 
-        dburl: str,
+        dbengine: sa.engine.Engine,
         region: str,
         queue_name: str,
         period: int = 30,
@@ -140,12 +125,6 @@ def schedule_lineup_calls(
 
     while True:
         now_timestamp = datetime.now().timestamp()
-        dbengine = sa.create_engine(
-                        dburl, 
-                        echo=True, 
-                        future=True,
-                        connect_args={'options': '-csearch_path=common,public'}
-                    )
 
         with Session(dbengine) as session:
 
@@ -177,14 +156,13 @@ def schedule_lineup_calls(
 
             session.close()
         
-        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
 
 def send_tournament_biweekly_directly(
 
-        dburl: str,
+        dbengine: sa.engine.Engine,
         period: int = 60
         
     ) -> None:
@@ -198,12 +176,6 @@ def send_tournament_biweekly_directly(
         strdate = now.strftime('%d-%m-%Y')
 
         if weekday in [2, 6] and hour == 9 and 0 < minute < 10:
-            dbengine = sa.create_engine(
-                            dburl, 
-                            echo=True, 
-                            future=True,
-                            connect_args={'options': '-csearch_path=common,public'}
-                        )
 
             with Session(dbengine) as session:
                 scheduled = (session
@@ -223,8 +195,6 @@ def send_tournament_biweekly_directly(
                     session.commit()
 
                 session.close()
-            
-            dbengine.dispose()
         
         time.sleep(period)
 
@@ -232,7 +202,7 @@ def send_tournament_biweekly_directly(
 
 def repeat_calls(
 
-        dburl: str,
+        dbengine: sa.engine.Engine,
         region: str,
         queue_name: str,
         period: int = 30
@@ -243,12 +213,6 @@ def repeat_calls(
 
     while True:
         now_timestamp = datetime.now().timestamp()
-        dbengine = sa.create_engine(
-                        dburl, 
-                        echo=True, 
-                        future=True,
-                        connect_args={'options': '-csearch_path=common,public'}
-                    )
         
         with Session(dbengine) as session:
 
@@ -303,7 +267,6 @@ def repeat_calls(
             
             session.close()
         
-        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
@@ -324,12 +287,11 @@ def main():
                 connect_args={'options': '-csearch_path=common,public'}
             )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
-    engine.dispose()
 
     # run objectives as threads
     get_updates_thread = threading.Thread(
             target=lambda: get_event_updates(
-                dburl=dburl, 
+                dbengine=engine, 
                 period=config.timeout.get_updates
             ), 
             daemon=True
@@ -337,7 +299,7 @@ def main():
 
     schedule_result_calls_thread = threading.Thread(
             target=lambda: schedule_result_calls(
-                dburl=dburl, 
+                dbengine=engine, 
                 period=config.timeout.schedule_calls,
                 region=config.queue.region,
                 queue_name=config.queue.queue_name
@@ -347,7 +309,7 @@ def main():
     
     schedule_lineup_calls_thread = threading.Thread(
             target=lambda: schedule_lineup_calls(
-                dburl=dburl, 
+                dbengine=engine, 
                 period=config.timeout.schedule_calls,
                 region=config.queue.region,
                 queue_name=config.queue.queue_name
@@ -357,7 +319,7 @@ def main():
     
     repeat_calls_thread = threading.Thread(
             target=lambda: repeat_calls(
-                dburl=dburl, 
+                dbengine=engine, 
                 period=config.timeout.repeat_calls,
                 region=config.queue.region,
                 queue_name=config.queue.queue_name
@@ -367,7 +329,7 @@ def main():
     
     send_tournament_biweekly_directly_thread = threading.Thread(
             target=lambda: send_tournament_biweekly_directly(
-                dburl=dburl
+                dbengine=engine
             ),
             daemon=True
         )
@@ -375,8 +337,8 @@ def main():
     get_updates_thread.start()
     schedule_result_calls_thread.start()
     schedule_lineup_calls_thread.start()
-    #repeat_calls_thread.start()
-    #send_tournament_biweekly_directly_thread.start()
+    repeat_calls_thread.start()
+    send_tournament_biweekly_directly_thread.start()
 
     # necessary for infinite evaluation
     while True:
