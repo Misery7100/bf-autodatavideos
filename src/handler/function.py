@@ -13,10 +13,6 @@ from database.tables import *
 
 def lambda_handler(event, context):
 
-    print('Event info')
-    print(event)
-    print('..........')
-
     dbcreds = {
         'db'        : os.environ.get('RDS_DATABASE'),
         'user'      : os.environ.get('RDS_USER'),
@@ -125,8 +121,6 @@ def lambda_handler(event, context):
                     data = session.query(EventResults).get(event_id)
                     data.plainly_success = True
                     session.commit()
-
-                    print('????')
 
                     event_ = session.query(EventsGlobal).get(event_id)
                     records = [

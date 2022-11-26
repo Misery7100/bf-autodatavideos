@@ -130,8 +130,6 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     response = rq.get(url, headers=HEADERS)
     data = response.json()
 
-    print('EXTRACTED 1')
-
     # extracted data: {home: ..., away: ...}
     lineup = parse_lineup_data(data, players_detailed=False)
 
@@ -149,8 +147,6 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     response = rq.get(url, headers=HEADERS)
     data = response.json()
 
-    print('EXTRACTED 2')
-
     statistics = parse_event_statistics(data['statistics'])
     statistics['home'].update({**dict(home_extra), **best_worse_home})
     statistics['away'].update({**dict(away_extra), **best_worse_away})
@@ -159,8 +155,6 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     url = f"{SOFASCORE_API}/event/{event_id}"
     response = rq.get(url, headers=HEADERS)
     data = response.json()
-
-    print('EXTRACTED 3')
 
     scores = parse_event_global_data(data)
     statistics['home'].update({'final_score' : scores['home']})

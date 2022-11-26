@@ -308,27 +308,27 @@ def main():
             daemon=True
         )
     
-    # repeat_calls_thread = threading.Thread(
-    #         target=lambda: repeat_calls(
-    #             dbengine=engine, 
-    #             period=config.timeout.repeat_calls,
-    #             queue=queue
-    #         ),
-    #         daemon=True
-    #     )
+    repeat_calls_thread = threading.Thread(
+            target=lambda: repeat_calls(
+                dbengine=engine, 
+                period=config.timeout.repeat_calls,
+                queue=queue
+            ),
+            daemon=True
+        )
     
-    # send_tournament_biweekly_directly_thread = threading.Thread(
-    #         target=lambda: send_tournament_biweekly_directly(
-    #             dbengine=engine
-    #         ),
-    #         daemon=True
-    #     )
+    send_tournament_biweekly_directly_thread = threading.Thread(
+            target=lambda: send_tournament_biweekly_directly(
+                dbengine=engine
+            ),
+            daemon=True
+        )
 
     get_updates_thread.start()
     schedule_result_calls_thread.start()
     schedule_lineup_calls_thread.start()
-    #repeat_calls_thread.start()
-    #send_tournament_biweekly_directly_thread.start()
+    repeat_calls_thread.start()
+    send_tournament_biweekly_directly_thread.start()
 
     # necessary for infinite evaluation
     while True:
