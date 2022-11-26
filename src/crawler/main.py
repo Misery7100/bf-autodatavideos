@@ -11,7 +11,7 @@ from database.tables import *
 from core.common import read_yaml
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
-from core.sofascore import extract_all_events_tournament
+from core.sofascore import extract_all_events_tournament, extract_tournament_biweekly_data
 
 # ---------------------------- #
 
@@ -181,16 +181,12 @@ def schedule_lineup_calls(
 
 # ---------------------------- #
 
-def schedule_tournament_calls(
+def send_tournament_biweekly_directly(
 
         dburl: str,
-        region: str,
-        queue_name: str,
-        period: int = 30
+        period: int = 60
         
     ) -> None:
-
-    queue = connect_to_queue(region, queue_name)
 
     while True:
         
@@ -200,7 +196,7 @@ def schedule_tournament_calls(
         minute = now.time().minute
         strdate = now.strftime('%d-%m-%Y')
 
-        if weekday in [2, 6] and hour == 9 and minute == 0:
+        if weekday in [2, 6] and hour == 9 and 0 < minute < 10:
             dbengine = sa.create_engine(
                             dburl, 
                             echo=True, 
@@ -216,8 +212,11 @@ def schedule_tournament_calls(
                             )
                 
                 if scheduled is None:
-                    pass
-                    # do something with tournament data
+
+                    # send it directly from crawler
+                    extracted = extract_tournament_biweekly_data(tournament_id=41087, season=16)
+
+                    # send to plainly
 
                     session.add(TournamentScheduleHistory(date_scheduled=strdate))
                     session.commit()
@@ -374,6 +373,13 @@ def main():
                 period=config.timeout.repeat_calls,
                 region=config.queue.region,
                 queue_name=config.queue.queue_name
+            ),
+            daemon=True
+        )
+    
+    send_tournament_biweekly_directly_thread = threading.Thread(
+            target=lambda: send_tournament_biweekly_directly(
+                dburl=dburl
             ),
             daemon=True
         )

@@ -71,6 +71,25 @@ def extract_all_events_tournament(tournament_id: int, season: int) -> Collection
 
 # ---------------------------- #
 
+def extract_tournament_biweekly_data(tournament_id: int, season: int) -> Dict[str, Any]:
+
+    url = f"{SOFASCORE_API}/unique-tournament/{season}/season/{tournament_id}/top-players/overall"
+    response = rq.get(url, headers=HEADERS)
+    top_players_data = response.json()
+
+    url = f"{SOFASCORE_API}/unique-tournament/{season}/season/{tournament_id}/top-teams/overall"
+    response = rq.get(url, headers=HEADERS)
+    top_teams_data = response.json()
+
+    extracted_players = parse_top_players(top_players_data)
+    extracted_teams = parse_top_teams(top_teams_data)
+
+    result = {**extracted_players, **extracted_teams}
+
+    return result
+
+# ---------------------------- #
+
 def extract_lineup_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
 
     # additional data: {home: {id, name, namecode},away: {id, name, namecode}}
@@ -175,7 +194,7 @@ def extract_player_data(player_id: int) -> Dict[str, Any]:
 
     # national-team-statistics
     url = f"{SOFASCORE_API}/player/{player_id}/national-team-statistics"
-    response2 = rq.get(url, headers=HEADERS)
+    response = rq.get(url, headers=HEADERS)
     data = response.json()
     national_data = parse_player_data_national(data)
 
@@ -284,8 +303,6 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
         corner_kicks = DotDict(_fetch_stat_item(tvdata, 'Corner kicks'))
         ball_possession = DotDict(_fetch_stat_item(possession, 'Ball possession'))
         offsides = DotDict(_fetch_stat_item(tvdata, 'Offsides'))
-
-        # goals ???
 
         yellow_cards = DotDict(_fetch_stat_item(tvdata, 'Yellow cards'))
         red_cards = DotDict(_fetch_stat_item(tvdata, 'Red cards'))
@@ -458,3 +475,73 @@ def parse_lineup_data(lineup: dict, players_detailed: bool = True) -> Dict[str, 
     return result
 
 # ---------------------------- #
+
+def parse_top_players(top_players: dict) -> Dict[str, Any]:
+
+    def _extract(players: dict, stat: str, fix_stat: str = None, top_number: int = 1) -> Tuple[str, Any]:
+
+        by_stat = players[stat]
+
+        name = by_stat[top_number - 1]['player']['name']
+        numb = by_stat[top_number - 1]['statistics'][fix_stat or stat]
+
+        return name, numb
+    
+    # ............................ #
+
+    top = top_players['topPlayers']
+
+    goals_name, goals_num = _extract(top, 'goals')
+    assts_name, assts_num = _extract(top, 'assists')
+    gna_name, gna_num = _extract(top, 'goalsAssistsSum')
+    pass_name, pass_num = _extract(top, 'accuratePasses', 'accuratePassesPercentage')
+    yell_name, yell_num = _extract(top, 'yellowCards')
+    red_name, red_num = _extract(top, 'redCards')
+
+    pass_num = round(pass_num, 2)
+
+    result = dict(
+        most_goals_number=goals_num,
+        most_goals_player_name=goals_name,
+        most_assists_number=assts_num,
+        most_assists_player_name=assts_name,
+        most_goals_and_assists_combined_number=gna_num,
+        most_goals_and_assists_combined_player_name=gna_name,
+        highest_pass_accuracy_number=pass_num,
+        highest_pass_accuracy_player_name=pass_name,
+        most_yellow_cards_number=yell_num,
+        most_yellow_cards_player_name=yell_name,
+        most_red_cards_number=red_num,
+        most_red_cards_player_name=red_name
+    )
+
+    return result
+
+# ---------------------------- #
+
+def parse_top_teams(top_teams: dict) -> Dict[str, Any]:
+    
+    def _extract(teams: dict, stat: str, fix_stat: str = None, top_number: int = 1) -> Tuple[str, Any]:
+
+        by_stat = teams[stat]
+
+        name = by_stat[top_number - 1]['team']['name']
+        numb = by_stat[top_number - 1]['statistics'][fix_stat or stat]
+
+        return name, numb
+    
+    # ............................ #
+
+    top = top_teams['topTeams']
+
+    goals_scored_name, goals_scored_num = _extract(top, 'goalsScored')
+    goals_against_name, goals_against_num = _extract(top, 'goalsConceded', top_number=0) # 0 -> -1 -> last element instead of first
+
+    result = dict(
+        most_goals_against_number=goals_against_num,
+        most_goals_against_team_name=goals_against_name,
+        most_goals_scored_number=goals_scored_num,
+        most_goals_scored_team_name=goals_scored_name
+    )
+
+    return result

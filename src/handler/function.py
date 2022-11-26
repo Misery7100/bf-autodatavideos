@@ -12,6 +12,10 @@ from database.tables import *
 
 def lambda_handler(event, context):
 
+    print('------- Event info -------')
+    print(event)
+    print('--------------------------')
+
     dbcreds = {
         'db'        : os.environ.get('RDS_DATABASE'),
         'user'      : os.environ.get('RDS_USER'),
@@ -23,7 +27,6 @@ def lambda_handler(event, context):
 
     # check all tables exist
     engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common'})
-    Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
     messages = event.get('Records')
     num_messages = len(messages)
