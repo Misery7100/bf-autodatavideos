@@ -88,6 +88,7 @@ class EventResultsPlayerHistory(Base):
 
     #player_id = Column(Integer, ForeignKey('player_details.event_id'))
     #player = relationship('PlayerDetails', backref='player_details_backref')
+    # f
 
     player_id = Column(Integer)
     sofascore = Column(Float, nullable=True)
