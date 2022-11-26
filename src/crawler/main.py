@@ -69,13 +69,10 @@ def get_event_updates(
 def schedule_result_calls(
 
         dbengine: sa.engine.Engine,
-        region: str,
-        queue_name: str,
+        queue: object,
         period: int = 30
         
     ) -> None:
-
-    queue = connect_to_queue(region, queue_name)
 
     while True:
         now_timestamp = datetime.now().timestamp()
@@ -113,15 +110,13 @@ def schedule_result_calls(
 def schedule_lineup_calls(
 
         dbengine: sa.engine.Engine,
-        region: str,
-        queue_name: str,
+        queue: object,
         period: int = 30,
         soon_thresh_mins: int = 15
         
     ) -> None:
 
     soon_thresh_secs = soon_thresh_mins * 60
-    queue = connect_to_queue(region, queue_name)
 
     while True:
         now_timestamp = datetime.now().timestamp()
@@ -203,13 +198,10 @@ def send_tournament_biweekly_directly(
 def repeat_calls(
 
         dbengine: sa.engine.Engine,
-        region: str,
-        queue_name: str,
+        queue: object,
         period: int = 30
         
     ) -> None:
-    
-    queue = connect_to_queue(region, queue_name)
 
     while True:
         now_timestamp = datetime.now().timestamp()
@@ -287,6 +279,7 @@ def main():
                 connect_args={'options': '-csearch_path=common,public'}
             )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
+    queue = connect_to_queue(config.queue.region, config.queue.queue_name)
 
     # run objectives as threads
     get_updates_thread = threading.Thread(
@@ -301,8 +294,7 @@ def main():
             target=lambda: schedule_result_calls(
                 dbengine=engine, 
                 period=config.timeout.schedule_calls,
-                region=config.queue.region,
-                queue_name=config.queue.queue_name
+                queue=queue
             ),
             daemon=True
         )
@@ -311,8 +303,7 @@ def main():
             target=lambda: schedule_lineup_calls(
                 dbengine=engine, 
                 period=config.timeout.schedule_calls,
-                region=config.queue.region,
-                queue_name=config.queue.queue_name
+                queue=queue
             ),
             daemon=True
         )
@@ -321,8 +312,7 @@ def main():
             target=lambda: repeat_calls(
                 dbengine=engine, 
                 period=config.timeout.repeat_calls,
-                region=config.queue.region,
-                queue_name=config.queue.queue_name
+                queue=queue
             ),
             daemon=True
         )

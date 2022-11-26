@@ -76,7 +76,9 @@ def lambda_handler(event, context):
                     # call plainly API
                     # ----
                 
-                else:  
+                else:
+
+                    print('LINEUP NOT CONFIRMED')  
 
                     # TODO: add config (better to have a common configuration file)
                     queue = connect_to_queue(region='eu-central-1', queue_name='bf-autodatavideos-mi')
