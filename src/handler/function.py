@@ -13,9 +13,9 @@ from database.tables import *
 
 def lambda_handler(event, context):
 
-    print('------- Event info -------')
+    print('^^^^^^^ Event info ^^^^^^^')
     print(event)
-    print('--------------------------')
+    print('vvvvvvvvvvvvvvvvvvvvvvvvvv')
 
     dbcreds = {
         'db'        : os.environ.get('RDS_DATABASE'),
@@ -32,7 +32,7 @@ def lambda_handler(event, context):
                 echo=True,
                 echo_pool=True, 
                 future=True,
-                pool=NullPool, 
+                poolclass=NullPool, 
                 connect_args={'options': '-csearch_path=common'}
             )
 

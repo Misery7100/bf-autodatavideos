@@ -33,7 +33,7 @@ def get_event_updates(
                         dburl, 
                         echo=True, 
                         future=True,
-                        pool=NullPool, 
+                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -92,7 +92,7 @@ def schedule_result_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        pool=NullPool, 
+                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -146,7 +146,7 @@ def schedule_lineup_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        pool=NullPool, 
+                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -205,7 +205,7 @@ def send_tournament_biweekly_directly(
                             dburl, 
                             echo=True, 
                             future=True,
-                            pool=NullPool, 
+                            poolclass=NullPool, 
                             connect_args={'options': '-csearch_path=common,public'}
                         )
 
@@ -252,7 +252,7 @@ def repeat_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        pool=NullPool, 
+                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
         
@@ -339,7 +339,7 @@ def main():
                 dburl, 
                 echo=True, 
                 future=True,
-                pool=NullPool, 
+                poolclass=NullPool, 
                 connect_args={'options': '-csearch_path=common,public'}
             )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
