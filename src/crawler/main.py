@@ -33,7 +33,6 @@ def get_event_updates(
                         dburl, 
                         echo=True, 
                         future=True,
-                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -92,7 +91,6 @@ def schedule_result_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -146,7 +144,6 @@ def schedule_lineup_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -205,7 +202,6 @@ def send_tournament_biweekly_directly(
                             dburl, 
                             echo=True, 
                             future=True,
-                            poolclass=NullPool, 
                             connect_args={'options': '-csearch_path=common,public'}
                         )
 
@@ -239,8 +235,7 @@ def repeat_calls(
         dburl: str,
         region: str,
         queue_name: str,
-        period: int = 30,
-        max_evaluation_time: int = 30 # in seconds
+        period: int = 30
         
     ) -> None:
     
@@ -252,7 +247,6 @@ def repeat_calls(
                         dburl, 
                         echo=True, 
                         future=True,
-                        poolclass=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
         
@@ -263,13 +257,7 @@ def repeat_calls(
                             .join(EventLineups)
                             .where(
                                 (EventLineups.call_scheduled == True) & \
-                                (
-                                    (EventLineups.plainly_success == False) | \
-                                    (
-                                        (EventLineups.plainly_success == None) & \
-                                        (now_timestamp - EventLineups.scheduled_timestamp > max_evaluation_time)
-                                    )
-                                )
+                                (EventLineups.plainly_success == False)
                             )
                             .all()
                         )
@@ -278,14 +266,8 @@ def repeat_calls(
                             .query(EventsGlobal.event_id, EventResults.event_id)
                             .join(EventResults)
                             .where(
-                                (EventResults.call_scheduled == True) & \
-                                (
-                                    (EventResults.plainly_success == False) | \
-                                    (
-                                        (EventResults.plainly_success == None) & \
-                                        (now_timestamp - EventResults.scheduled_timestamp > max_evaluation_time)
-                                    )
-                                )
+                                (EventLineups.call_scheduled == True) & \
+                                (EventLineups.plainly_success == False)
                             )
                             .all()
                         )
@@ -339,7 +321,6 @@ def main():
                 dburl, 
                 echo=True, 
                 future=True,
-                poolclass=NullPool, 
                 connect_args={'options': '-csearch_path=common,public'}
             )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
@@ -394,7 +375,8 @@ def main():
     get_updates_thread.start()
     schedule_result_calls_thread.start()
     schedule_lineup_calls_thread.start()
-    repeat_calls_thread.start()
+    #repeat_calls_thread.start()
+    #send_tournament_biweekly_directly_thread.start()
 
     # necessary for infinite evaluation
     while True:

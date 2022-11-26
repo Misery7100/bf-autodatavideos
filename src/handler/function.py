@@ -32,9 +32,9 @@ def lambda_handler(event, context):
                 echo=True,
                 echo_pool=True, 
                 future=True,
-                poolclass=NullPool, 
                 connect_args={'options': '-csearch_path=common'}
             )
+    Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
     messages = event.get('Records')
     num_messages = len(messages)
