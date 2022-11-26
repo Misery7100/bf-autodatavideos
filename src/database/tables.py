@@ -84,7 +84,7 @@ class EventResultsPlayerHistory(Base):
     id = Column(Integer, primary_key=True)
 
     event_id = Column(Integer, ForeignKey('events_global.event_id'))
-    event = relationship('EventsGlobal', backref='event_results_backref')
+    event = relationship('EventsGlobal', backref='event_results_history_backref')
 
     #player_id = Column(Integer, ForeignKey('player_details.event_id'))
     #player = relationship('PlayerDetails', backref='player_details_backref')
