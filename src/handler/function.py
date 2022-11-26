@@ -28,13 +28,9 @@ def lambda_handler(event, context):
 
     # check all tables exist
     engine = sa.create_engine(
-                dburl, 
-                echo=True,
-                echo_pool=True, 
-                future=True,
+                dburl,
                 connect_args={'options': '-csearch_path=common'}
             )
-    Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
 
     messages = event.get('Records')
     num_messages = len(messages)
@@ -49,90 +45,84 @@ def lambda_handler(event, context):
         if processing_type == 'lineup':
 
             with Session(engine) as session:
-                data = session.query(EventsGlobal).where(EventsGlobal.event_id == event_id).one_or_none()
-                session.close()
+                data = session.query(EventsGlobal).get(event_id)
             
-            if not data is None:
-                additional_data = dict(
-                    home=dict(
-                        id=data.hometeam_id,
-                        name=data.hometeam_name.upper(),
-                        namecode=data.hometeam_namecode.upper()
-                    ),
-                    away=dict(
-                        id=data.awayteam_id,
-                        name=data.awayteam_name.upper(),
-                        namecode=data.awayteam_namecode.upper()
+                if not data is None:
+                    additional_data = dict(
+                        home=dict(
+                            id=data.hometeam_id,
+                            name=data.hometeam_name.upper(),
+                            namecode=data.hometeam_namecode.upper()
+                        ),
+                        away=dict(
+                            id=data.awayteam_id,
+                            name=data.awayteam_name.upper(),
+                            namecode=data.awayteam_namecode.upper()
+                        )
                     )
-                )
-                lineup_extracted = extract_lineup_data(
-                    event_id=event_id, 
-                    additional_data=additional_data
-                )
+                    lineup_extracted = extract_lineup_data(
+                        event_id=event_id, 
+                        additional_data=additional_data
+                    )
 
-                if lineup_extracted:
-                    print(lineup_extracted)
+                    if lineup_extracted:
+                        print(lineup_extracted)
 
-                    # call plainly API
-                    # ----
-
-                    with Session(engine) as session:
+                        # call plainly API
+                        # ----
                         data = session.query(EventLineups).get(event_id)
                         data.plainly_success = True
                         session.commit()
                         session.close()
-                
-                else:
+                    
+                    else:
 
-                    print('LINEUP NOT CONFIRMED')  
+                        print('LINEUP NOT CONFIRMED')  
 
-                    # TODO: add config (better to have a common configuration file)
-                    queue = connect_to_queue(region='eu-central-1', queue_name='bf-autodatavideos-mi')
-                    send_message(queue, body='lineup-event', event_id=event_id, processing_type='lineup', delay=60)
+                        # TODO: add config (better to have a common configuration file)
+                        queue = connect_to_queue(region='eu-central-1', queue_name='bf-autodatavideos-mi')
+                        send_message(queue, body='lineup-event', event_id=event_id, processing_type='lineup', delay=60)
 
                     # repush message via boto
 
         elif processing_type == 'result':
 
             with Session(engine) as session:
-                data = session.query(EventsGlobal).where(EventsGlobal.event_id == event_id).one_or_none()
-                session.close()
+                data = session.query(EventsGlobal).get(event_id)
 
-            if not data is None:
-                additional_data = dict(
-                    home=dict(
-                        id=data.hometeam_id,
-                        name=data.hometeam_name.upper(),
-                        namecode=data.hometeam_namecode.upper()
-                    ),
-                    away=dict(
-                        id=data.awayteam_id,
-                        name=data.awayteam_name.upper(),
-                        namecode=data.awayteam_namecode.upper()
+                if not data is None:
+                    additional_data = dict(
+                        home=dict(
+                            id=data.hometeam_id,
+                            name=data.hometeam_name.upper(),
+                            namecode=data.hometeam_namecode.upper()
+                        ),
+                        away=dict(
+                            id=data.awayteam_id,
+                            name=data.awayteam_name.upper(),
+                            namecode=data.awayteam_namecode.upper()
+                        )
                     )
-                )
-                result_extracted = extract_result_data(
-                    event_id=event_id, 
-                    additional_data=additional_data
-                )
+                    result_extracted = extract_result_data(
+                        event_id=event_id, 
+                        additional_data=additional_data
+                    )
 
-                # call plainly API
+                    # call plainly API
 
-                print(result_extracted)
+                    print(result_extracted)
 
-                # push player scores for the event
-                sofascores = result_extracted['sofascores']
-                
-                with Session(engine) as session:
+                    # push player scores for the event
+                    sofascores = result_extracted['sofascores']
 
                     data = session.query(EventResults).get(event_id)
                     data.plainly_success = True
                     session.commit()
 
-                    event = session.query(EventsGlobal).get(event_id)
+                    event_ = session.query(EventsGlobal).get(event_id)
                     records = [
                                 EventResultsPlayerHistory(
-                                    event=event, 
+                                    event=event_, 
                                     player_id=x[0], 
                                     sofascore=x[1]
                                 )
@@ -144,8 +134,6 @@ def lambda_handler(event, context):
         
         else:
             errors += 1
-    
-    engine.dispose()
     
     return {
         'statusCode': 200 if errors == 0 else 400,
