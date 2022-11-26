@@ -79,22 +79,26 @@ def extract_lineup_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     response = rq.get(url, headers=HEADERS)
     data = response.json()
 
-    # extracted data: {home: ..., away: ...}
-    extracted = parse_lineup_data(data)
+    if not data['confirmed']:
+        return dict()
 
-    extra_data = DotDict(additional_data)
-    home_extra = extra_data.home
-    away_extra = extra_data.away
+    else:
+        # extracted data: {home: ..., away: ...}
+        extracted = parse_lineup_data(data)
 
-    home_extra.manager = extract_manager_name(home_extra.id)
-    away_extra.manager = extract_manager_name(away_extra.id)
-    home_extra.pop('id')
-    away_extra.pop('id')
+        extra_data = DotDict(additional_data)
+        home_extra = extra_data.home
+        away_extra = extra_data.away
 
-    extracted['home'].update(dict(home_extra))
-    extracted['away'].update(dict(away_extra))
+        home_extra.manager = extract_manager_name(home_extra.id)
+        away_extra.manager = extract_manager_name(away_extra.id)
+        home_extra.pop('id')
+        away_extra.pop('id')
 
-    return extracted
+        extracted['home'].update(dict(home_extra))
+        extracted['away'].update(dict(away_extra))
+
+        return extracted
 
 # ---------------------------- #
 
@@ -116,9 +120,6 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     home_extra.pop('id')
     away_extra.pop('id')
 
-    # lineup['home'].update(dict(home_extra))
-    # lineup['away'].update(dict(away_extra))
-
     best_worse_home = parse_player_statistics(lineup['home']['players'])
     best_worse_away = parse_player_statistics(lineup['away']['players'])
 
@@ -131,7 +132,37 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     statistics['home'].update({**dict(home_extra), **best_worse_home})
     statistics['away'].update({**dict(away_extra), **best_worse_away})
 
+    # get final score
+    url = f"{SOFASCORE_API}/event/{event_id}"
+    response = rq.get(url, headers=HEADERS)
+    data = response.json()
+
+    scores = parse_event_global_data(data)
+    statistics['home'].update({'final_score' : scores['home']})
+    statistics['away'].update({'final_score' : scores['away']})
+
+    # add lineup scores
+    sofascores = parse_player_scores(lineup['home']['players'] + lineup['away']['players'])
+    statistics['sofascores'] = sofascores
+
     return statistics
+
+# ---------------------------- #
+
+def parse_event_global_data(data: dict) -> Dict[str, Any]:
+
+    data = DotDict(data)
+    event = data.event
+
+    away_score = event.awayScore.display
+    home_score = event.homeScore.display
+
+    result = dict(
+        home=home_score,
+        away=away_score
+    )
+
+    return result
 
 # ---------------------------- #
 
@@ -142,7 +173,31 @@ def extract_player_data(player_id: int) -> Dict[str, Any]:
     data = response.json()
     extracted = parse_player_data(data['player'])
 
+    # national-team-statistics
+    url = f"{SOFASCORE_API}/player/{player_id}/national-team-statistics"
+    response2 = rq.get(url, headers=HEADERS)
+    data = response.json()
+    national_data = parse_player_data_national(data)
+
+    extracted.update(national_data)
+
     return extracted
+
+# ---------------------------- #
+
+def parse_player_data_national(data: dict) -> Dict[str, Any]:
+
+    stats = data['statistics'][0]
+
+    goals = stats['goals']
+    matches = stats['appearances']
+
+    result = dict(
+        national_team_goals=goals,
+        national_team_matches=matches
+    )
+
+    return result
 
 # ---------------------------- #
 
@@ -157,6 +212,17 @@ def extract_manager_name(team_id: int) -> Dict[str, Any]:
     name = data.team.manager.name
     short_name = data.team.manager.shortName
     result = dict(name=name, short_name=short_name)
+
+    return result
+
+# ---------------------------- #
+
+def parse_player_scores(players: List[Dict[str, Any]]) -> List[Tuple[int, float]]:
+
+    result = [
+        (x['player']['id'], x.get('statistics', dict()).get('rating', None))
+        for x in players
+    ]
 
     return result
 
@@ -219,10 +285,12 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
         ball_possession = DotDict(_fetch_stat_item(possession, 'Ball possession'))
         offsides = DotDict(_fetch_stat_item(tvdata, 'Offsides'))
 
-        #free_kicks = _fetch_stat_item() # no data for free kicks
+        # goals ???
 
         yellow_cards = DotDict(_fetch_stat_item(tvdata, 'Yellow cards'))
         red_cards = DotDict(_fetch_stat_item(tvdata, 'Red cards'))
+        fouls = DotDict(_fetch_stat_item(tvdata, 'Fouls'))
+
         overall_passes = DotDict(_fetch_stat_item(passes, 'Passes'))
         successful_passes = DotDict(_fetch_stat_item(passes, 'Accurate passes'))
 
@@ -238,7 +306,8 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
             overall_passes=overall_passes,
             successful_passes=successful_passes,
             goal_attempts=goal_attempts,
-            total_shots=total_shots
+            total_shots=total_shots,
+            fouls=fouls
         )
 
         return result
@@ -343,19 +412,14 @@ def parse_player_data(player: dict) -> Dict[str, Any]:
     position = player.position
     market_value = player.proposedMarketValue
     team_name = player.team.name
-    number_of_country_games = player.userCount # I don't sure about that
-
-    picture = None # for a while
 
     result = dict(
         shirt_number=shirt_number,
         player_id=player_id,
         name=name,
-        picture=picture,
         position=position,
         market_value=market_value,
-        team_name=team_name,
-        number_of_country_games=number_of_country_games
+        team_name=team_name
     )
 
     return result

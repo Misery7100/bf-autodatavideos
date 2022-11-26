@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 
-from database.tables import Base, EventsGlobal, EventLineups, EventResults
+from database.tables import *
 from core.common import read_yaml
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
@@ -15,11 +15,25 @@ from core.sofascore import extract_all_events_tournament
 
 # ---------------------------- #
 
-def get_event_updates(dbengine: sa.engine.Engine, period: int = 300):
+def get_event_updates(
+        
+        dburl: str, 
+        period: int = 300
+    
+    ):
 
     while True:
+
+        # tournament and season hardcoded for a while
         new_events = extract_all_events_tournament(tournament_id=41087, season=16)
+
         extracted_event_ids = set(map(lambda x: x['event_id'], new_events))
+        dbengine = sa.create_engine(
+                        dburl, 
+                        echo=True, 
+                        future=True, 
+                        connect_args={'options': '-csearch_path=common,public'}
+                    )
 
         with Session(dbengine) as session:
 
@@ -44,43 +58,103 @@ def get_event_updates(dbengine: sa.engine.Engine, period: int = 300):
                     EventLineups(event=session.query(EventsGlobal).get(id_)) 
                     for id_ in new_event_ids
                 ]
+                session.add_all(lineups)
                 results = [
                     EventResults(event=session.query(EventsGlobal).get(id_)) 
                     for id_ in new_event_ids
                 ]
-                session.add_all(lineups)
                 session.add_all(results)
 
             session.commit()
+            session.close()
 
+        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
 
-def schedule_api_calls(
-        dbengine: sa.engine.Engine,
-        region: str,
-        queue_name: str, 
-        period: int = 10, 
-        soon_thresh_mins: int = 15
-    ):
+def schedule_result_calls(
 
-    soon_thresh_secs = soon_thresh_mins * 60
+        dburl: str,
+        region: str,
+        queue_name: str,
+        period: int = 30
+        
+    ) -> None:
 
     queue = connect_to_queue(region, queue_name)
 
     while True:
-        now = datetime.now().timestamp()
+        now_timestamp = datetime.now().timestamp()
+        dbengine = sa.create_engine(
+                        dburl, 
+                        echo=True, 
+                        future=True, 
+                        connect_args={'options': '-csearch_path=common,public'}
+                    )
+
+        with Session(dbengine) as session:
+    
+            ended_events = (session.query(EventsGlobal.event_id, EventResults.event_id)
+                                    .join(EventResults)
+                                    .where(EventResults.call_scheduled == False)
+                                    .where(EventsGlobal.event_status_code == 100)
+                                    .all()
+                                )
+                    
+            ended_event_ids = list(map(lambda x: x._data[0], ended_events))
+
+            if ended_event_ids:
+
+                for event_id in ended_event_ids:
+                    send_message(queue, body='result-event', event_id=event_id, processing_type='result')
+                
+                stmt = (
+                        update(EventResults)
+                        .where(EventResults.event_id.in_(ended_event_ids))
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
+                    )
+                session.execute(stmt)
+                session.commit()
+            
+            session.close()
+        
+        dbengine.dispose()
+        time.sleep(period)
+
+# ---------------------------- #
+
+def schedule_lineup_calls(
+
+        dburl: str,
+        region: str,
+        queue_name: str,
+        period: int = 30,
+        soon_thresh_mins: int = 15
+        
+    ) -> None:
+
+    soon_thresh_secs = soon_thresh_mins * 60
+    queue = connect_to_queue(region, queue_name)
+
+    while True:
+        now_timestamp = datetime.now().timestamp()
+        dbengine = sa.create_engine(
+                        dburl, 
+                        echo=True, 
+                        future=True, 
+                        connect_args={'options': '-csearch_path=common,public'}
+                    )
 
         with Session(dbengine) as session:
 
             soon_events = (session
                             .query(EventsGlobal.event_id, EventLineups.event_id)
                             .join(EventLineups)
-                            .where(EventLineups.call_scheduled == False)
                             .where(
-                                (EventsGlobal.start_timestamp - now > 0) & \
-                                (EventsGlobal.start_timestamp - now < soon_thresh_secs)
+                                (EventLineups.call_scheduled == False) & \
+                                (EventsGlobal.start_timestamp - now_timestamp > 0) & \
+                                (EventsGlobal.start_timestamp - now_timestamp < soon_thresh_secs)
                             )
                             .all()
                         )
@@ -95,33 +169,154 @@ def schedule_api_calls(
                 stmt = (
                         update(EventLineups)
                         .where(EventLineups.event_id.in_(soon_event_ids))
-                        .values(call_scheduled=True, scheduled_timestamp=now)
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
+                    )
+                session.execute(stmt)
+                session.commit()
+
+            session.close()
+        
+        dbengine.dispose()
+        time.sleep(period)
+
+# ---------------------------- #
+
+def schedule_tournament_calls(
+
+        dburl: str,
+        region: str,
+        queue_name: str,
+        period: int = 30
+        
+    ) -> None:
+
+    queue = connect_to_queue(region, queue_name)
+
+    while True:
+        
+        now = datetime.now()
+        weekday = now.weekday()
+        hour = now.time().hour
+        minute = now.time().minute
+        strdate = now.strftime('%d-%m-%Y')
+
+        if weekday in [2, 6] and hour == 9 and minute == 0:
+            dbengine = sa.create_engine(
+                            dburl, 
+                            echo=True, 
+                            future=True, 
+                            connect_args={'options': '-csearch_path=common,public'}
+                        )
+
+            with Session(dbengine) as session:
+                scheduled = (session
+                                .query(TournamentScheduleHistory)
+                                .where(TournamentScheduleHistory.date_scheduled == strdate)
+                                .one_or_none()
+                            )
+                
+                if scheduled is None:
+                    pass
+                    # do something with tournament data
+
+                    session.add(TournamentScheduleHistory(date_scheduled=strdate))
+                    session.commit()
+
+                session.close()
+            
+            dbengine.dispose()
+        
+        time.sleep(period)
+
+# ---------------------------- #
+
+def repeat_calls(
+
+        dburl: str,
+        region: str,
+        queue_name: str,
+        period: int = 30,
+        max_evaluation_time: int = 30 # in seconds
+        
+    ) -> None:
+    
+    queue = connect_to_queue(region, queue_name)
+
+    while True:
+        now_timestamp = datetime.now().timestamp()
+        dbengine = sa.create_engine(
+                        dburl, 
+                        echo=True, 
+                        future=True, 
+                        connect_args={'options': '-csearch_path=common,public'}
+                    )
+        
+        with Session(dbengine) as session:
+
+            broken_lineups = (session
+                            .query(EventsGlobal.event_id, EventLineups.event_id)
+                            .join(EventLineups)
+                            .where(
+                                (EventLineups.call_scheduled == True) & \
+                                (
+                                    (EventLineups.plainly_success == False) | \
+                                    (
+                                        (EventLineups.plainly_success == None) & \
+                                        (now_timestamp - EventLineups.scheduled_timestamp > max_evaluation_time)
+                                    )
+                                )
+                            )
+                            .all()
+                        )
+            
+            broken_results = (session
+                            .query(EventsGlobal.event_id, EventResults.event_id)
+                            .join(EventResults)
+                            .where(
+                                (EventResults.call_scheduled == True) & \
+                                (
+                                    (EventResults.plainly_success == False) | \
+                                    (
+                                        (EventResults.plainly_success == None) & \
+                                        (now_timestamp - EventResults.scheduled_timestamp > max_evaluation_time)
+                                    )
+                                )
+                            )
+                            .all()
+                        )
+
+            broken_lineups_ids = list(map(lambda x: x._data[0], broken_lineups))
+            broken_results_ids = list(map(lambda x: x._data[0], broken_results))
+
+            if broken_lineups_ids:
+
+                for event_id in broken_lineups_ids:
+                    send_message(queue, body='lineup-event', event_id=event_id, processing_type='lineup')
+                
+                stmt = (
+                        update(EventLineups)
+                        .where(EventLineups.event_id.in_(broken_lineups_ids))
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
                     )
                 session.execute(stmt)
                 session.commit()
             
-            ended_events = (session.query(EventsGlobal.event_id, EventResults.event_id)
-                            .join(EventResults)
-                            .where(EventResults.call_scheduled == False)
-                            .where(EventsGlobal.event_status_code == 100)
-                            .all()
-                        )
-            
-            ended_event_ids = list(map(lambda x: x._data[0], ended_events))
+            if broken_results_ids:
 
-            if ended_event_ids:
-
-                for event_id in ended_event_ids:
+                for event_id in broken_results_ids:
                     send_message(queue, body='result-event', event_id=event_id, processing_type='result')
                 
                 stmt = (
                         update(EventResults)
-                        .where(EventResults.event_id.in_(ended_event_ids))
-                        .values(call_scheduled=True, scheduled_timestamp=now)
+                        .where(EventResults.event_id.in_(broken_results_ids))
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
                     )
                 session.execute(stmt)
                 session.commit()
+            
+            session.close()
         
+        dbengine.dispose()
         time.sleep(period)
 
 # ---------------------------- #
@@ -134,31 +329,59 @@ def main():
     dbcreds = read_yaml('secrets/databases.yml').default
     dburl = build_connection_url(**dbcreds)
 
-    # check all tables exist
-    engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common,public'})
+    # check all tables exist 
+    engine = sa.create_engine(
+                dburl, 
+                echo=True, 
+                future=True, 
+                connect_args={'options': '-csearch_path=common,public'}
+            )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
+    engine.dispose()
 
     # run objectives as threads
-    get_update_thread = threading.Thread(
+    get_updates_thread = threading.Thread(
             target=lambda: get_event_updates(
-                dbengine=engine, 
+                dburl=dburl, 
                 period=config.timeout.get_updates
             ), 
             daemon=True
         )
 
-    schedule_calls_thread = threading.Thread(
-            target=lambda: schedule_api_calls(
-                dbengine=engine, 
+    schedule_result_calls_thread = threading.Thread(
+            target=lambda: schedule_result_calls(
+                dburl=dburl, 
                 period=config.timeout.schedule_calls,
                 region=config.queue.region,
                 queue_name=config.queue.queue_name
             ),
             daemon=True
         )
+    
+    schedule_lineup_calls_thread = threading.Thread(
+            target=lambda: schedule_lineup_calls(
+                dburl=dburl, 
+                period=config.timeout.schedule_calls,
+                region=config.queue.region,
+                queue_name=config.queue.queue_name
+            ),
+            daemon=True
+        )
+    
+    repeat_calls_thread = threading.Thread(
+            target=lambda: repeat_calls(
+                dburl=dburl, 
+                period=config.timeout.repeat_calls,
+                region=config.queue.region,
+                queue_name=config.queue.queue_name
+            ),
+            daemon=True
+        )
 
-    get_update_thread.start()
-    schedule_calls_thread.start()
+    get_updates_thread.start()
+    schedule_result_calls_thread.start()
+    schedule_lineup_calls_thread.start()
+    repeat_calls_thread.start()
 
     # necessary for infinite evaluation
     while True:
