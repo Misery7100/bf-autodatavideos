@@ -2,6 +2,7 @@ import os
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
@@ -26,7 +27,14 @@ def lambda_handler(event, context):
     dburl = build_connection_url(**dbcreds)
 
     # check all tables exist
-    engine = sa.create_engine(dburl, echo=True, future=True, connect_args={'options': '-csearch_path=common'})
+    engine = sa.create_engine(
+                dburl, 
+                echo=True,
+                echo_pool=True, 
+                future=True,
+                pool=NullPool, 
+                connect_args={'options': '-csearch_path=common'}
+            )
 
     messages = event.get('Records')
     num_messages = len(messages)

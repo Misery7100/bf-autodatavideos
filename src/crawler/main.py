@@ -4,6 +4,7 @@ import time
 
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 
@@ -31,7 +32,8 @@ def get_event_updates(
         dbengine = sa.create_engine(
                         dburl, 
                         echo=True, 
-                        future=True, 
+                        future=True,
+                        pool=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -89,7 +91,8 @@ def schedule_result_calls(
         dbengine = sa.create_engine(
                         dburl, 
                         echo=True, 
-                        future=True, 
+                        future=True,
+                        pool=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -142,7 +145,8 @@ def schedule_lineup_calls(
         dbengine = sa.create_engine(
                         dburl, 
                         echo=True, 
-                        future=True, 
+                        future=True,
+                        pool=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
 
@@ -200,7 +204,8 @@ def send_tournament_biweekly_directly(
             dbengine = sa.create_engine(
                             dburl, 
                             echo=True, 
-                            future=True, 
+                            future=True,
+                            pool=NullPool, 
                             connect_args={'options': '-csearch_path=common,public'}
                         )
 
@@ -246,7 +251,8 @@ def repeat_calls(
         dbengine = sa.create_engine(
                         dburl, 
                         echo=True, 
-                        future=True, 
+                        future=True,
+                        pool=NullPool, 
                         connect_args={'options': '-csearch_path=common,public'}
                     )
         
@@ -332,7 +338,8 @@ def main():
     engine = sa.create_engine(
                 dburl, 
                 echo=True, 
-                future=True, 
+                future=True,
+                pool=NullPool, 
                 connect_args={'options': '-csearch_path=common,public'}
             )
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
