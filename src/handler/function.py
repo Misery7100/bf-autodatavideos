@@ -29,7 +29,8 @@ def lambda_handler(event, context):
     # check all tables exist
     engine = sa.create_engine(
                 dburl,
-                connect_args={'options': '-csearch_path=common'}
+                pool_recycle=30,
+                connect_args={'options': '-csearch_path=common', 'connect_timeout': 45}
             )
 
     messages = event.get('Records')
@@ -90,6 +91,8 @@ def lambda_handler(event, context):
             with Session(engine) as session:
                 data = session.query(EventsGlobal).get(event_id)
 
+                print('DATA QUERY APPLIED')
+
                 if not data is None:
                     additional_data = dict(
                         home=dict(
@@ -103,10 +106,14 @@ def lambda_handler(event, context):
                             namecode=data.awayteam_namecode.upper()
                         )
                     )
+
+                    print('ADDITIONAL DATA BUILT')
                     result_extracted = extract_result_data(
                         event_id=event_id, 
                         additional_data=additional_data
-                    )
+                    )  
+
+                    print('RESULT EXTRACTED')
 
                     # call plainly API
 
@@ -118,6 +125,8 @@ def lambda_handler(event, context):
                     data = session.query(EventResults).get(event_id)
                     data.plainly_success = True
                     session.commit()
+
+                    print('????')
 
                     event_ = session.query(EventsGlobal).get(event_id)
                     records = [
