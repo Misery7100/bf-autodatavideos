@@ -205,11 +205,16 @@ def extract_player_data(player_id: int) -> Dict[str, Any]:
 # ---------------------------- #
 
 def parse_player_data_national(data: dict) -> Dict[str, Any]:
+    
+    if data['statistics']:
+        stats = data['statistics'][0]
 
-    stats = data['statistics'][0]
-
-    goals = stats['goals']
-    matches = stats['appearances']
+        goals = stats['goals']
+        matches = stats['appearances']
+    
+    else:
+        goals = 0
+        matches = 0
 
     result = dict(
         national_team_goals=goals,

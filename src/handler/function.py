@@ -13,7 +13,7 @@ from database.tables import *
 
 def lambda_handler(event, context):
 
-    print('^^^^^^^ Event info ^^^^^^^')
+    print('^-----^ Event info ^-----^')
     print(event)
     print('vvvvvvvvvvvvvvvvvvvvvvvvvv')
 
