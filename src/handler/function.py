@@ -75,6 +75,12 @@ def lambda_handler(event, context):
 
                     # call plainly API
                     # ----
+
+                    with Session(engine) as session:
+                        data = session.query(EventLineups).get(event_id)
+                        data.plainly_success = True
+                        session.commit()
+                        session.close()
                 
                 else:
 
@@ -118,6 +124,11 @@ def lambda_handler(event, context):
                 sofascores = result_extracted['sofascores']
                 
                 with Session(engine) as session:
+
+                    data = session.query(EventResults).get(event_id)
+                    data.plainly_success = True
+                    session.commit()
+
                     event = session.query(EventsGlobal).get(event_id)
                     records = [
                                 EventResultsPlayerHistory(
