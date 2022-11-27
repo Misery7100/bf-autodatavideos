@@ -351,7 +351,7 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
             goal_attempts_percentage = '0%'
         
         offsides = stats.offsides[team]
-        # free kicks
+        fouls = stats.fouls[team]
         yellow_cards = stats.yellow_cards[team]
         red_cards = stats.red_cards[team]
         overall_passes = stats.overall_passes[team]
@@ -366,7 +366,8 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
             red_cards=red_cards,
             overall_passes=overall_passes,
             successful_passes=successful_passes,
-            goal_attempts=goal_attempts
+            goal_attempts=goal_attempts,
+            fouls=fouls
         )
 
         return result
@@ -455,6 +456,8 @@ def parse_lineup_data(lineup: dict, players_detailed: bool = True) -> Dict[str, 
 
         if players_detailed:
             players = list(map(lambda x: DotDict(x), data.players))
+            # filter out substitute
+            players = list(filter(lambda x: not x.substitute, players))
             players = list(map(lambda x: x.player.id, players))
             players = list(map(lambda x: extract_player_data(x), players))
         

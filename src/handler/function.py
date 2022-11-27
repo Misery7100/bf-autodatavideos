@@ -6,8 +6,21 @@ from sqlalchemy.pool import NullPool
 
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
+from core.plainly import prepare_lineup_request, prepare_result_request
 from core.sofascore import extract_lineup_data, extract_result_data
 from database.tables import *
+
+# ---------------------------- #
+
+def rewrap_key_player(x: dict) -> dict:
+
+    return dict(
+        name=x['name'].upper(), 
+        number_country_games=x['national_team_matches'], 
+        club=x['team_name'], 
+        market_value=x['market_value'],
+        goals=x['national_team_goals']
+    )
 
 # ---------------------------- #
 
@@ -63,10 +76,60 @@ def lambda_handler(event, context):
                     )
 
                     if lineup_extracted:
-                        print(lineup_extracted)
 
+                        home_players = lineup_extracted['home']['players']
+                        away_players = lineup_extracted['away']['players']
+                        home_plids = list(map(lambda x: x['player_id'], home_players))
+                        away_plids = list(map(lambda x: x['player_id'], away_players))
+
+                        home_scores = (session
+                                        .query(
+                                            EventResultsPlayerHistory.player_id,
+                                            sa.sql.func.avg(EventResultsPlayerHistory.sofascore).label('average')
+                                        )
+                                        .where(
+                                            (EventResultsPlayerHistory.player_id.in_(home_plids)) & \
+                                            (EventResultsPlayerHistory.sofascore != None)
+                                        )
+                                        .group_by(EventResultsPlayerHistory.player_id)
+                                        .order_by(sa.desc('average'))
+                                        .limit(3)
+                                        .all()
+                                    )
+                        
+                        away_scores = (session
+                                        .query(
+                                            EventResultsPlayerHistory.player_id,
+                                            sa.sql.func.avg(EventResultsPlayerHistory.sofascore).label('average')
+                                        )
+                                        .where(
+                                            (EventResultsPlayerHistory.player_id.in_(away_plids)) & \
+                                            (EventResultsPlayerHistory.sofascore != None)
+                                        )
+                                        .group_by(EventResultsPlayerHistory.player_id)
+                                        .order_by(sa.desc('average'))
+                                        .limit(3)
+                                        .all()
+                                    )
+                        
+                        home_key_players_id = list(map(lambda x: x[0], home_scores))
+                        away_key_players_id = list(map(lambda x: x[0], away_scores))
+
+                        home_3_key_players = list(sorted(
+                            filter(lambda x: x['player_id'] in home_key_players_id, home_players), 
+                            key=lambda x: home_key_players_id.index(x['player_id'])))
+                        away_3_key_players = list(sorted(
+                            filter(lambda x: x['player_id'] in away_key_players_id, away_players), 
+                            key=lambda x: away_key_players_id.index(x['player_id'])))
+
+                        home_3_key_players = list(map(rewrap_key_player, home_3_key_players))
+                        away_3_key_players = list(map(rewrap_key_player, away_3_key_players))
+
+                        plainly_reqs = prepare_lineup_request(lineup_extracted, home_3_key_players, away_3_key_players)
+                        print(plainly_reqs)
                         # call plainly API
                         # ----
+
                         data = session.query(EventLineups).get(event_id)
                         data.plainly_success = True
                         session.commit()
@@ -87,8 +150,6 @@ def lambda_handler(event, context):
             with Session(engine) as session:
                 data = session.query(EventsGlobal).get(event_id)
 
-                print('DATA QUERY APPLIED')
-
                 if not data is None:
                     additional_data = dict(
                         home=dict(
@@ -103,17 +164,15 @@ def lambda_handler(event, context):
                         )
                     )
 
-                    print('ADDITIONAL DATA BUILT')
                     result_extracted = extract_result_data(
                         event_id=event_id, 
                         additional_data=additional_data
                     )  
 
-                    print('RESULT EXTRACTED')
-
                     # call plainly API
 
-                    print(result_extracted)
+                    plainly_req = prepare_result_request(result_extracted)
+                    print(plainly_req)
 
                     # push player scores for the event
                     sofascores = result_extracted['sofascores']
