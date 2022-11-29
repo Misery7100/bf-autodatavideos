@@ -176,7 +176,11 @@ def lambda_handler(event, context):
                     result_parameters = prepare_result_request(result_extracted, engine)
 
                     # call plainly API
-                    if now_timestamp - data.start_timestamp < 1800:
+                    # roghly estimate end_timestamp with 130 minutes game and check for threshold 
+                    # within 30 minutes
+                    seconds_after_end = now_timestamp - (data.start_timestamp + 130 * 60)
+
+                    if seconds_after_end < 30 * 60:
                         
                         plainly_response = make_render_request(
                             parameters=result_parameters,
@@ -186,6 +190,9 @@ def lambda_handler(event, context):
                         )
 
                         print(plainly_response)
+                    
+                    else:
+                        print(f'Too old event: {seconds_after_end=}')
 
                     # push player scores for the event
                     sofascores = result_extracted['sofascores']
