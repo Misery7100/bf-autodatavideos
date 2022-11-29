@@ -173,7 +173,7 @@ def lambda_handler(event, context):
                         additional_data=additional_data
                     ) 
 
-                    result_parameters = prepare_result_request(result_extracted)
+                    result_parameters = prepare_result_request(result_extracted, engine)
 
                     # call plainly API
                     if now_timestamp - data.start_timestamp < 1800:
