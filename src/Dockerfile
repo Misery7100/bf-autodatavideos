@@ -2,6 +2,8 @@ FROM python:3.10-slim
 
 WORKDIR /bf-autodatavideos-crawler
 
+ENV PLAINLY_AUTH_KEY ${PLAINLY_AUTH_KEY}
+
 RUN apt-get update
 COPY /crawler /bf-autodatavideos-crawler/crawler
 COPY /core /bf-autodatavideos-crawler/crawler/core

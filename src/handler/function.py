@@ -1,12 +1,12 @@
 import os
 import sqlalchemy as sa
 
+from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import NullPool
 
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
-from core.plainly import prepare_lineup_request, prepare_result_request
+from core.plainly import *
 from core.sofascore import extract_lineup_data, extract_result_data
 from database.tables import *
 
@@ -34,6 +34,8 @@ def lambda_handler(event, context):
         'host'      : os.environ.get('RDS_HOST'),
     }
 
+    PLAINLY_AUTH_KEY = os.environ.get('PLAINLY_AUTH_KEY')
+
     dburl = build_connection_url(**dbcreds)
 
     # check all tables exist
@@ -45,6 +47,7 @@ def lambda_handler(event, context):
 
     messages = event.get('Records')
     num_messages = len(messages)
+    now_timestamp = datetime.now().timestamp()
     errors = 0
 
     for msg in messages:
@@ -168,12 +171,21 @@ def lambda_handler(event, context):
                     result_extracted = extract_result_data(
                         event_id=event_id, 
                         additional_data=additional_data
-                    )  
+                    ) 
+
+                    result_parameters = prepare_result_request(result_extracted)
 
                     # call plainly API
+                    if now_timestamp - data.start_timestamp < 1800:
+                        
+                        plainly_response = make_render_request(
+                            parameters=result_parameters,
+                            project_id="ee888f8c-ac76-4785-919f-afa91df19b43",
+                            template_id="d8b6cf18-45fa-4c18-b83a-4b2d8a45df1e",
+                            auth_key=PLAINLY_AUTH_KEY
+                        )
 
-                    plainly_req = prepare_result_request(result_extracted)
-                    print(plainly_req)
+                        print(plainly_response)
 
                     # push player scores for the event
                     sofascores = result_extracted['sofascores']
