@@ -64,7 +64,8 @@ class TeamDetails(Base):
     __tablename__ = 'team_details'
 
     team_id = Column(Integer, primary_key=True)
-    picture_url = Column(String(100))
+    picture_url = Column(String(300), nullable=True)
+    name_ger = Column(String(100))
 
 # ---------------------------- #
 
@@ -73,7 +74,8 @@ class PlayerDetails(Base):
     __tablename__ = 'player_details'
 
     player_id = Column(Integer, primary_key=True)
-    picture_url = Column(String(100))
+    picture_url = Column(String(300), nullable=True)
+    name_ger = Column(String(100))
 
 # ---------------------------- #
 
@@ -85,10 +87,5 @@ class EventResultsPlayerHistory(Base):
 
     event_id = Column(Integer, ForeignKey('events_global.event_id'))
     event = relationship('EventsGlobal', backref='event_results_history_backref')
-
-    #player_id = Column(Integer, ForeignKey('player_details.event_id'))
-    #player = relationship('PlayerDetails', backref='player_details_backref')
-    # f
-
     player_id = Column(Integer)
     sofascore = Column(Float, nullable=True)

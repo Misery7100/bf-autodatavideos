@@ -133,3 +133,5 @@ secrets/
 *.tar.gz
 
 *.ipynb
+
+/**/data/*

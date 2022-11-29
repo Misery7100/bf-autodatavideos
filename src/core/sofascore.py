@@ -111,8 +111,6 @@ def extract_lineup_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
 
         home_extra.manager = extract_manager_name(home_extra.id)
         away_extra.manager = extract_manager_name(away_extra.id)
-        home_extra.pop('id')
-        away_extra.pop('id')
 
         extracted['home'].update(dict(home_extra))
         extracted['away'].update(dict(away_extra))
@@ -136,8 +134,6 @@ def extract_result_data(event_id: int, additional_data: dict) -> Dict[str, Any]:
     extra_data = DotDict(additional_data)
     home_extra = extra_data.home
     away_extra = extra_data.away
-    home_extra.pop('id')
-    away_extra.pop('id')
 
     best_worse_home = parse_player_statistics(lineup['home']['players'])
     best_worse_away = parse_player_statistics(lineup['away']['players'])
@@ -261,15 +257,19 @@ def parse_player_statistics(players: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     best_player_name = best_player['player']['shortName'].upper()
     best_player_score = best_player['statistics']['rating']
+    best_player_id = best_player['player']['id']
 
     worst_player_name = worst_player['player']['shortName'].upper()
     worst_player_score = worst_player['statistics']['rating']
+    worst_player_id = worst_player['player']['id']
 
     result = dict(
         best_player_name=best_player_name,
         best_player_score=best_player_score,
+        best_player_id=best_player_id,
         worst_player_name=worst_player_name,
-        worst_player_score=worst_player_score
+        worst_player_score=worst_player_score,
+        worst_player_id=worst_player_id
     )
 
     return result
@@ -349,6 +349,9 @@ def parse_event_statistics(statistics: dict) -> Dict[str, Any]:
         
         else:
             goal_attempts_percentage = '0%'
+        
+        #! changing goal_attempts -> total_shots according to the requirement
+        goal_attempts = total_shots
         
         offsides = stats.offsides[team]
         fouls = stats.fouls[team]
@@ -456,7 +459,6 @@ def parse_lineup_data(lineup: dict, players_detailed: bool = True) -> Dict[str, 
 
         if players_detailed:
             players = list(map(lambda x: DotDict(x), data.players))
-            # filter out substitute
             players = list(filter(lambda x: not x.substitute, players))
             players = list(map(lambda x: x.player.id, players))
             players = list(map(lambda x: extract_player_data(x), players))

@@ -1,9 +1,37 @@
 import n2w
+import requests
+import sqlalchemy as sa
+
+from collections.abc import MutableMapping
+from copy import deepcopy
+from requests.auth import HTTPBasicAuth
+from sqlalchemy.orm import Session
+
+from database.tables import *
+
+# ---------------------------- #
+
+placeholder_player_img = 'http://twc-rss.com/autovideos/data/wm/Spielerportrait/no_player_image.png'
+
+# ---------------------------- #
+
+def flatten(d, parent_key='', sep='_'):
+
+    items = []
+
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+
+    return dict(items)
 
 # ---------------------------- #
 
 def prepare_lineup_request(
-    
+
         lineup_extracted: dict, 
         home_keyplayers: list,
         away_keyplayers: list
@@ -52,13 +80,18 @@ def prepare_lineup_request(
     home_request = _rewrap(home, home_keyplayers)
     away_request = _rewrap(away, away_keyplayers)
 
-    result = dict(home=home_request, away=away_request)
+    result = flatten(dict(home=home_request, away=away_request))
 
     return result
 
 # ---------------------------- #
 
-def prepare_result_request(result_extracted: dict) -> dict:
+def prepare_result_request(
+    
+        result_extracted: dict,
+        dbengine: sa.engine.Engine
+    
+    ) -> dict:
 
     def _get_stat(stat: str, home: dict, away: dict, astype = None) -> dict:
 
@@ -81,6 +114,7 @@ def prepare_result_request(result_extracted: dict) -> dict:
     def _get_best_worst(mode: str, home: dict, away: dict):
         
         mode_names = (home[f'{mode}_player_name'], away[f'{mode}_player_name'])
+        mode_ids = (home[f'{mode}_player_id'], away[f'{mode}_player_id'])
         mode_scores = (home[f'{mode}_player_score'], away[f'{mode}_player_score'])
 
         if mode == 'best':
@@ -91,16 +125,42 @@ def prepare_result_request(result_extracted: dict) -> dict:
 
         return dict(
             name=mode_names[idx],
-            score=str(mode_scores[idx])
+            score=str(mode_scores[idx]),
+            id=mode_ids[idx]
         )
+
+    # ............................ #
+
+    def _replace_player_from_db(ori: dict, db: object) -> dict:
+
+        orig = deepcopy(ori)
+
+        if db is None:
+            orig['image_url'] = placeholder_player_img
+
+        else:
+            orig['name'] = db.name_ger.strip().upper()
+            orig['image_url'] = db.picture_url
+
+        orig.pop('id')
+
+        return orig
 
     # ............................ #
 
     home = result_extracted['home']
     away = result_extracted['away']
 
+    with Session(dbengine) as session:
+        country_home = session.query(TeamDetails).get(home['id'])
+        country_away = session.query(TeamDetails).get(away['id'])
+        country_home_image_url = country_home.picture_url
+        country_away_image_url = country_away.picture_url
+        country_home_name = country_home.name_ger.strip().upper()
+        country_away_name = country_away.name_ger.strip().upper()
+
     screen_one = dict(
-        names=_get_stat('name', home, away),
+        names=dict(home=country_home_name, away=country_away_name),
         final_score=_get_stat('final_score', home, away, str),
         goal_attempts=_get_stat('goal_attempts', home, away),
         fouls=_get_stat('fouls', home, away),
@@ -110,22 +170,68 @@ def prepare_result_request(result_extracted: dict) -> dict:
         red_cards=_get_stat('red_cards', home, away),
         passes=_get_stat('overall_passes', home, away),
         pass_success=_get_stat('successful_passes', home, away),
-        perc_ball_possession=_get_stat('possession_percentage', home, away)
+        perc_ball_possession=_get_stat('possession_percentage', home, away),
+        goal_attempts_percentage=_get_stat('goal_attempts_percentage', home, away),
+        country_home_image_url=country_home_image_url,
+        country_away_image_url=country_away_image_url
     )
+
+    best_player = _get_best_worst('best', home, away)
+    worst_player = _get_best_worst('worst', home, away)
+
+    with Session(dbengine) as session:
+        best_player_db = session.query(PlayerDetails).get(best_player['id'])
+        worst_player_db = session.query(PlayerDetails).get(worst_player['id'])
+
+    best_player = _replace_player_from_db(best_player, best_player_db)
+    worst_player = _replace_player_from_db(worst_player, worst_player_db)
 
     screen_two = dict(
-        best_player=_get_best_worst('best', home, away)
+        best_player=best_player
     )
     screen_three = dict(
-        worst_player=_get_best_worst('worst', home, away)
+        worst_player=worst_player
     )
 
-    result = dict(
+    result = flatten(dict(
         screen_one=screen_one,
         screen_two=screen_two,
         screen_three=screen_three
-    )
+    ))
 
     return result
 
 # ---------------------------- #
+
+def make_render_request(
+        
+        parameters: dict, 
+        project_id: str, 
+        template_id: str,
+        auth_key: str
+    
+    ):
+
+    url = 'https://api.plainlyvideos.com/api/v2/renders'
+
+    headers = {
+        "Content-Type" : "application/json"
+    }
+
+    auth = HTTPBasicAuth(auth_key, "")
+
+    data = {
+        "projectId"     : project_id,
+        "templateId"    : template_id,
+        "parameters"    : parameters,
+        "outputFormat"  : {"format" :"MP4"}
+    }
+
+    response = requests.post(
+                    url, 
+                    headers=headers, 
+                    json=data, 
+                    auth=auth
+                )
+    
+    return response

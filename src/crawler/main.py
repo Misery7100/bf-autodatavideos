@@ -4,7 +4,6 @@ import time
 
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import NullPool
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 
