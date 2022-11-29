@@ -28,6 +28,7 @@ jobs:
           username: admin
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo export PLAINLY_AUTH_KEY="${{ secrets.PLAINLY_AUTH_KEY }}" >> /etc/profile
             cd ~/bf-autodatavideos
             git pull
             cd src

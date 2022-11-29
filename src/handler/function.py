@@ -19,7 +19,8 @@ def rewrap_key_player(x: dict) -> dict:
         number_country_games=x['national_team_matches'], 
         club=x['team_name'], 
         market_value=x['market_value'],
-        goals=x['national_team_goals']
+        goals=x['national_team_goals'],
+        id=x['player_id']
     )
 
 # ---------------------------- #
