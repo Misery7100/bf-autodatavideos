@@ -89,3 +89,25 @@ class EventResultsPlayerHistory(Base):
     event = relationship('EventsGlobal', backref='event_results_history_backref')
     player_id = Column(Integer)
     sofascore = Column(Float, nullable=True)
+
+# ---------------------------- #
+
+class PlainlyIdentifiers(Base):
+
+    __tablename__ = 'plainly_identifiers'
+
+    variable_name = Column(String(100), primary_key=True)
+    value = Column(String(100))
+
+# ---------------------------- #
+
+class PlainlyTemplateIDs(Base):
+
+    __tablename__ = 'plainly_template_ids'
+
+    template_id = Column(String(100), primary_key=True)
+    event_type = Column(String(100))
+    formation = Column(String(100), nullable=True)
+    side_details = Column(String(100), nullable=True)
+
+# ---------------------------- #

@@ -2,31 +2,17 @@ import n2w
 import requests
 import sqlalchemy as sa
 
-from collections.abc import MutableMapping
 from copy import deepcopy
 from requests.auth import HTTPBasicAuth
 from sqlalchemy.orm import Session
 
+from core.common import flatten
 from database.tables import *
+from datetime import datetime
 
 # ---------------------------- #
 
 placeholder_player_img = 'http://twc-rss.com/autovideos/data/wm/Spielerportrait/no_player_image.png'
-
-# ---------------------------- #
-
-def flatten(d, parent_key='', sep='_'):
-
-    items = []
-
-    for k, v in d.items():
-        new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, MutableMapping):
-            items.extend(flatten(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-
-    return dict(items)
 
 # ---------------------------- #
 
@@ -125,7 +111,7 @@ def prepare_result_request(
 
         return dict(
             name=mode_names[idx],
-            score=str(mode_scores[idx]),
+            score=f'{mode_scores[idx]:.1f}',
             id=mode_ids[idx]
         )
 
@@ -198,6 +184,70 @@ def prepare_result_request(
         screen_two=screen_two,
         screen_three=screen_three
     ))
+
+    return result
+
+# ---------------------------- #
+
+def prepare_tournament_request(
+    
+        result_extracted: dict,
+        dbengine: sa.engine.Engine
+    
+    ) -> dict:
+
+    def _replace_player_from_db(ori: dict, db: object) -> dict:
+
+        orig = deepcopy(ori)
+
+        if db is None:
+            orig['player_image'] = placeholder_player_img
+
+        else:
+            orig['player_name'] = db.name_ger.strip().upper()
+            orig['player_image'] = db.picture_url
+
+        orig['number'] = str(orig['number'])
+        orig.pop('id')
+
+        return orig
+    
+    # ............................ #
+
+    def _replace_team_from_db(ori: dict, db: object) -> dict:
+
+        print(ori)
+
+        orig = deepcopy(ori)
+        orig['team_name'] = db.name_ger.strip().upper()
+        orig['team_image'] = db.picture_url
+        orig['number'] = str(orig['number'])
+        orig.pop('id')
+
+        return orig
+
+    # ............................ #
+
+    teams = result_extracted['teams']
+    players = result_extracted['players']
+
+    with Session(dbengine) as session:
+
+        for param, team_details in teams.items():
+            team_ = session.query(TeamDetails).get(team_details['id'])
+            teams[param] = _replace_team_from_db(team_details, team_)
+        
+        for param, player_details in players.items():
+            player_ = session.query(PlayerDetails).get(player_details['id'])
+            players[param] = _replace_player_from_db(player_details, player_)
+
+    teams = flatten(teams)
+    players = flatten(players)
+
+    # hardcoded for a while
+    week_number = (datetime.now() - datetime.strptime('2022-11-20', '%Y-%m-%d')).days // 7 + 1
+
+    result = {**teams, **players, 'week_number' : week_number}
 
     return result
 

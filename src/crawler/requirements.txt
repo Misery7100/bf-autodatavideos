@@ -1,8 +1,0 @@
-boto3
-decorator
-numpy
-psycopg2-binary
-PyYAML
-requests
-sqlalchemy
-n2w

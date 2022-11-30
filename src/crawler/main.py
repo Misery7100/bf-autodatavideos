@@ -1,3 +1,4 @@
+import os
 import sqlalchemy as sa
 import threading
 import time
@@ -265,6 +266,9 @@ def repeat_calls(
 def main():
 
     config = read_yaml('config.yml')
+
+    # debug
+    print(f"plainly: {os.environ.get('PLAINLY_AUTH_KEY')}")
 
     # rds connection
     dbcreds = read_yaml('secrets/databases.yml').default

@@ -36,6 +36,8 @@ jobs:
           cd src
           cp -r database handler/database/
           cp -r core handler/core/
+          cp config.yml handler/config.yml
+          cp requirements.txt handler/requirements.txt
           cd handler
           pip install -r requirements.txt --target ./
 

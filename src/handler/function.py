@@ -4,24 +4,12 @@ import sqlalchemy as sa
 from datetime import datetime
 from sqlalchemy.orm import Session
 
+from core.common import read_yaml
 from core.db import build_connection_url
 from core.messaging import connect_to_queue, send_message
 from core.plainly import *
-from core.sofascore import extract_lineup_data, extract_result_data
+from core.sofascore import extract_lineup_data, extract_result_data, rewrap_key_player
 from database.tables import *
-
-# ---------------------------- #
-
-def rewrap_key_player(x: dict) -> dict:
-
-    return dict(
-        name=x['name'].upper(), 
-        number_country_games=x['national_team_matches'], 
-        club=x['team_name'], 
-        market_value=x['market_value'],
-        goals=x['national_team_goals'],
-        id=x['player_id']
-    )
 
 # ---------------------------- #
 
@@ -37,6 +25,7 @@ def lambda_handler(event, context):
     PLAINLY_AUTH_KEY = os.environ.get('PLAINLY_AUTH_KEY')
 
     dburl = build_connection_url(**dbcreds)
+    config = read_yaml('config.yml')
 
     # check all tables exist
     engine = sa.create_engine(
@@ -143,9 +132,14 @@ def lambda_handler(event, context):
 
                         print('LINEUP NOT CONFIRMED')  
 
-                        # TODO: add config (better to have a common configuration file)
-                        queue = connect_to_queue(region='eu-central-1', queue_name='bf-autodatavideos-mi')
-                        send_message(queue, body='lineup-event', event_id=event_id, processing_type='lineup', delay=60)
+                        queue = connect_to_queue(region=config.queue.region, queue_name=config.queue.queue_name)
+                        send_message(
+                            queue, 
+                            body='lineup-event', 
+                            event_id=event_id, 
+                            processing_type='lineup', 
+                            delay=config.timeout.lineup_not_confirmed
+                        )
 
                     # repush message via boto
 
@@ -189,7 +183,7 @@ def lambda_handler(event, context):
                             auth_key=PLAINLY_AUTH_KEY
                         )
 
-                        print(plainly_response)
+                        print(plainly_response.json())
                     
                     else:
                         print(f'Too old event: {seconds_after_end=}')
@@ -218,7 +212,7 @@ def lambda_handler(event, context):
             errors += 1
     
     return {
-        'statusCode': 200 if errors == 0 else 400,
+        'statusCode': 200,
         'body': {
             'num_messages' : num_messages,
             'num_errors'   : errors

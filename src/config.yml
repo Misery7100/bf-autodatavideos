@@ -2,6 +2,7 @@ timeout:
   get_updates: 300
   schedule_calls: 30
   repeat_calls: 30
+  lineup_not_confirmed: 60
 
 queue:
   region: eu-central-1
