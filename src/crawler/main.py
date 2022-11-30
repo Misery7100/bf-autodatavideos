@@ -181,7 +181,6 @@ def send_tournament_biweekly_directly(
                 
                 if scheduled is None:
 
-                    # send it directly from crawler
                     extracted = extract_tournament_biweekly_data(tournament_id=41087, season=16)
 
                     # send to plainly
