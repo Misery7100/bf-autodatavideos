@@ -4,6 +4,7 @@ WORKDIR /bf-autodatavideos-crawler
 
 RUN apt-get update -y && apt-get upgrade -y
 
+COPY /crawler /bf-autodatavideos-crawler/crawler
 COPY /core /bf-autodatavideos-crawler/crawler/core
 COPY /database /bf-autodatavideos-crawler/crawler/database
 COPY /config.yml /bf-autodatavideos-crawler/crawler/config.yml
