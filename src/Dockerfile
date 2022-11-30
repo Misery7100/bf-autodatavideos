@@ -5,7 +5,7 @@ WORKDIR /bf-autodatavideos-crawler
 ENV PLAINLY_AUTH_KEY ${PLAINLY_AUTH_KEY}
 
 RUN apt-get update -y && apt-get upgrade -y
-COPY /* /bf-autodatavideos-crawler/crawler/
+COPY . /bf-autodatavideos-crawler/crawler/
 
 WORKDIR /bf-autodatavideos-crawler/crawler
 
