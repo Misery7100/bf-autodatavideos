@@ -1,10 +1,10 @@
-# BF: Automatized data videos
+# BurdaForward: automated data videos
 
 Automatized data videos creation using sofascore and plainly
 
 ## Structure
 
-<img src="./img/bf-autodatavideos.png">
+<!-- <img src="./img/bf-autodatavideos.png"> -->
 
 ## Main Logic
 
@@ -16,41 +16,44 @@ The handler look at processing type firstly to define processing branch. For lin
 
 It's impossible to avoid such procedure while we don't have any lightweight endpoint from Sofascore that can return only confirmation status. Also it's not reasonable to store line-up data into a database at this step, because we can't retrieve partial data for any line-up.
 
-**Notes**
-
-- Impossible to extract last name only - for different players name on shirt and last name proposed by sofascore are different, so suggest to use `shortName` from player endpoint;
-- ...
-
 ### Results
 
 For results handler get a message from the messaging interface, send two requests: first to extract line-up data after game, second to extract statistics. This data processed by another handler branch and the handler make a post request to plainly service. Alongside with the plainly request extracted data stored into database for further aggregation and processing tournament statistics.
 
-### Tournament statistics
+### Tournament biweekly breakdown
 
 No description given.
 
 ## Crawler
-_based on: AWS EC2_
+_based on: AWS Lambda_
 
-**Notes**
+## Schedulers
+_based on: AWS Lambda_
 
-- What about celery for pull scheduling?
+### Line-ups and results for events
+
+### Tournament biweekly breakdown
 
 ## Messaging Interface
 _based on: AWS SQS_
 
-**Message format**
+**Message example**
 
 ```json
 {
-    "event_id"        : 10230541,
-    "processing_type" : "line-up"
+    "body" : "lineup-event",
+    "MessageAttributes" : {
+        "event_id" : {
+            "DataType" : "String", 
+            "StringValue" : "10230541"
+        },
+        "processing_type" : {
+            "DataType" : "String", 
+            "StringValue" : "lineup"
+        }
+    }
 }
 ```
 
-**Notes**
-
 ## Handler
 _based on: AWS Lambda_
-
-**Notes**
