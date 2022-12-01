@@ -30,7 +30,7 @@ _based on: AWS Lambda_
 ## Schedulers
 _based on: AWS Lambda_
 
-### Line-ups and results for events
+### Line-ups and results
 
 ### Tournament biweekly breakdown
 

@@ -126,7 +126,7 @@ def prepare_result_request(
 
         else:
             orig['name'] = db.name_ger.strip().upper()
-            orig['image_url'] = db.picture_url
+            orig['image_url'] = db.picture_url or placeholder_player_img
 
         orig.pop('id')
 
@@ -205,7 +205,7 @@ def prepare_tournament_request(
 
         else:
             orig['player_name'] = db.name_ger.strip().upper()
-            orig['player_image'] = db.picture_url
+            orig['player_image'] = db.picture_url or placeholder_player_img
 
         orig['number'] = str(orig['number'])
         orig.pop('id')
