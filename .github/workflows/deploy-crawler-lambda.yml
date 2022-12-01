@@ -1,4 +1,4 @@
-name: Deploy handler to AWS Lambda
+name: Deploy crawler of updates to AWS Lambda
 
 on:
   push:
@@ -6,17 +6,19 @@ on:
       - dev
     paths:
       - src/**
+      - '!src/handler/**'
+      - '!src/scheduler-tr/**'
       - '!src/crawler/**'
-      - '!src/crawler-rl/**'
-      - '!src/crawler-tr/**'
+      - '!src/scheduler-rl/**'
   pull_request:
     branches:
       - dev
     paths:
       - src/**
+      - '!src/handler/**'
+      - '!src/scheduler-tr/**'
       - '!src/crawler/**'
-      - '!src/crawler-rl/**'
-      - '!src/crawler-tr/**'
+      - '!src/scheduler-rl/**'
 
 jobs:
 
@@ -34,19 +36,19 @@ jobs:
       - name: Rebuild structure
         run: |
           cd src
-          cp -r database handler/database/
-          cp -r core handler/core/
-          cp config.yml handler/config.yml
-          cp requirements.txt handler/requirements.txt
-          cd handler
+          cp -r database crawler-lambda/database/
+          cp -r core crawler-lambda/core/
+          cp config.yml crawler-lambda/config.yml
+          cp requirements.txt crawler-lambda/requirements.txt
+          cd crawler-lambda
           pip install -r requirements.txt --target ./
 
       - name: Deploy as update-code via AWS CLI
         uses: jsmrcaga/action-easy-lambda-deploy@v0.0.3
         with:
-          function_name: bf-autodatavideos-handler
+          function_name: bf-autodatavideos-crawler
           region: ${{ secrets.AWS_REGION }}
-          zip_command: cd src/handler; zip -r easy-lambda-deploy.zip ./
+          zip_command: cd src/crawler-lambda; zip -r easy-lambda-deploy.zip ./
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

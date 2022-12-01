@@ -7,13 +7,19 @@ on:
     paths:
       - src/**
       - '!src/handler/**'
+      - '!src/scheduler-rl/**'
+      - '!src/scheduler-tr/**'
+      - '!src/crawler-lambda/**'
   pull_request:
     branches:
       - dev
     paths:
       - src/**
       - '!src/handler/**'
-
+      - '!src/scheduler-rl/**'
+      - '!src/scheduler-tr/**'
+      - '!src/crawler-lambda/**'
+      
 jobs:
 
   deploy_aws_ec2:
