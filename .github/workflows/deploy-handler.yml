@@ -9,6 +9,7 @@ on:
       - '!src/crawler/**'
       - '!src/crawler-rl/**'
       - '!src/crawler-tr/**'
+      - '!src/crawler-lambda/**'
   pull_request:
     branches:
       - dev
@@ -17,6 +18,7 @@ on:
       - '!src/crawler/**'
       - '!src/crawler-rl/**'
       - '!src/crawler-tr/**'
+      - '!src/crawler-lambda/**'
 
 jobs:
 
