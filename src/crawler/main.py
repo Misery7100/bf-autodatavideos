@@ -82,8 +82,10 @@ def schedule_result_calls(
     
             ended_events = (session.query(EventsGlobal.event_id, EventResults.event_id)
                                     .join(EventResults)
-                                    .where(EventResults.call_scheduled == False)
-                                    .where(EventsGlobal.event_status_code == 100)
+                                    .where(
+                                        (EventResults.call_scheduled == False) & \
+                                        (EventsGlobal.event_status_code == 100)
+                                    )
                                     .all()
                                 )
                     
@@ -97,6 +99,78 @@ def schedule_result_calls(
                 stmt = (
                         update(EventResults)
                         .where(EventResults.event_id.in_(ended_event_ids))
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
+                    )
+                session.execute(stmt)
+                session.commit()
+            
+            session.close()
+        
+        time.sleep(period)
+
+# ---------------------------- #
+
+def schedule_result_lineup_calls(
+
+        dbengine: sa.engine.Engine,
+        queue: object,
+        period: int = 30,
+        soon_thresh_mins: int = 15
+
+    ) -> None:
+
+    soon_thresh_secs = soon_thresh_mins * 60
+
+    while True:
+        now_timestamp = datetime.now().timestamp()
+
+        with Session(dbengine) as session:
+    
+            ended_events = (session.query(EventsGlobal.event_id, EventResults.event_id)
+                                    .join(EventResults)
+                                    .where(
+                                        (EventResults.call_scheduled == False) & \
+                                        (EventsGlobal.event_status_code == 100)
+                                    )
+                                    .all()
+                                )
+                    
+            ended_event_ids = list(map(lambda x: x._data[0], ended_events))
+
+            if ended_event_ids:
+
+                for event_id in ended_event_ids:
+                    send_message(queue, body='result-event', event_id=event_id, processing_type='result')
+                
+                stmt = (
+                        update(EventResults)
+                        .where(EventResults.event_id.in_(ended_event_ids))
+                        .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
+                    )
+                session.execute(stmt)
+                session.commit()
+            
+            soon_events = (session
+                            .query(EventsGlobal.event_id, EventLineups.event_id)
+                            .join(EventLineups)
+                            .where(
+                                (EventLineups.call_scheduled == False) & \
+                                (EventsGlobal.start_timestamp - now_timestamp > 0) & \
+                                (EventsGlobal.start_timestamp - now_timestamp < soon_thresh_secs)
+                            )
+                            .all()
+                        )
+            
+            soon_event_ids = list(map(lambda x: x._data[0], soon_events))
+
+            if soon_event_ids:
+
+                for event_id in soon_event_ids:
+                    send_message(queue, body='lineup-event', event_id=event_id, processing_type='lineup')
+                
+                stmt = (
+                        update(EventLineups)
+                        .where(EventLineups.event_id.in_(soon_event_ids))
                         .values(call_scheduled=True, scheduled_timestamp=now_timestamp)
                     )
                 session.execute(stmt)
@@ -229,8 +303,8 @@ def repeat_calls(
                             .query(EventsGlobal.event_id, EventResults.event_id)
                             .join(EventResults)
                             .where(
-                                (EventLineups.call_scheduled == True) & \
-                                (EventLineups.plainly_success == False)
+                                (EventResults.call_scheduled == True) & \
+                                (EventResults.plainly_success == False)
                             )
                             .all()
                         )
@@ -296,32 +370,41 @@ def main():
             daemon=True
         )
 
-    schedule_result_calls_thread = threading.Thread(
-            target=lambda: schedule_result_calls(
-                dbengine=engine, 
-                period=config.timeout.schedule_calls,
-                queue=queue
-            ),
-            daemon=True
-        )
+    # schedule_result_calls_thread = threading.Thread(
+    #         target=lambda: schedule_result_calls(
+    #             dbengine=engine, 
+    #             period=config.timeout.schedule_calls,
+    #             queue=queue
+    #         ),
+    #         daemon=True
+    #     )
     
-    schedule_lineup_calls_thread = threading.Thread(
-            target=lambda: schedule_lineup_calls(
-                dbengine=engine, 
-                period=config.timeout.schedule_calls,
-                queue=queue
-            ),
-            daemon=True
-        )
+    # schedule_lineup_calls_thread = threading.Thread(
+    #         target=lambda: schedule_lineup_calls(
+    #             dbengine=engine, 
+    #             period=config.timeout.schedule_calls,
+    #             queue=queue
+    #         ),
+    #         daemon=True
+    #     )
+
+    schedule_result_lineup_calls_thread = threading.Thread(
+        target=lambda: schedule_lineup_calls(
+            dbengine=engine, 
+            period=config.timeout.schedule_calls,
+            queue=queue
+        ),
+        daemon=True
+    )
     
-    repeat_calls_thread = threading.Thread(
-            target=lambda: repeat_calls(
-                dbengine=engine, 
-                period=config.timeout.repeat_calls,
-                queue=queue
-            ),
-            daemon=True
-        )
+    # repeat_calls_thread = threading.Thread(
+    #         target=lambda: repeat_calls(
+    #             dbengine=engine, 
+    #             period=config.timeout.repeat_calls,
+    #             queue=queue
+    #         ),
+    #         daemon=True
+    #     )
     
     send_tournament_biweekly_directly_thread = threading.Thread(
             target=lambda: send_tournament_biweekly_directly(
@@ -331,9 +414,7 @@ def main():
         )
 
     get_updates_thread.start()
-    schedule_result_calls_thread.start()
-    schedule_lineup_calls_thread.start()
-    repeat_calls_thread.start()
+    schedule_result_lineup_calls_thread.start()
     send_tournament_biweekly_directly_thread.start()
 
     # necessary for infinite evaluation
