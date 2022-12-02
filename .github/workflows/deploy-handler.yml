@@ -6,7 +6,6 @@ on:
       - dev
     paths:
       - src/**
-      - '!src/crawler/**'
       - '!src/crawler-rl/**'
       - '!src/crawler-tr/**'
       - '!src/crawler-lambda/**'
@@ -15,7 +14,6 @@ on:
       - dev
     paths:
       - src/**
-      - '!src/crawler/**'
       - '!src/crawler-rl/**'
       - '!src/crawler-tr/**'
       - '!src/crawler-lambda/**'

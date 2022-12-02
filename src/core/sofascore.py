@@ -403,7 +403,7 @@ def parse_event_data(event: dict) -> Dict[str, Any]:
     
     event_id = event.id
     start_timestamp = event.startTimestamp
-    round_num = event.roundInfo.round
+    round_num = event.roundInfo.get('round', -1) # for some reason some round numbers missed
     event_status_code = event.status.code
     event_status_type = event.status.type
     hometeam_id = event.homeTeam.id

@@ -21,14 +21,10 @@ def get_event_updates(
     new_events = extract_all_events_tournament(tournament_id=41087, season=16)
     extracted_event_ids = set(map(lambda x: x['event_id'], new_events))
 
-    print(f'{extracted_event_ids=}')
-
     with Session(dbengine) as session:
 
         exist_event_ids = session.query(EventsGlobal.event_id).all()
         exist_event_ids = set(map(lambda x: x._data[0], exist_event_ids))
-
-        print(f'{exist_event_ids=}')
 
         new_event_ids = list(extracted_event_ids.difference(exist_event_ids))
 
@@ -63,10 +59,10 @@ def get_event_updates(
 def lambda_handler(event, context):
 
     dbcreds = {
-        'db'        : os.environ.get('RDS_DATABASE'),
-        'user'      : os.environ.get('RDS_USER'),
-        'password'  : os.environ.get('RDS_PASSWORD'),
-        'host'      : os.environ.get('RDS_HOST'),
+        'db'        : os.environ.get('RDS_DATABASE', None),
+        'user'      : os.environ.get('RDS_USER', None),
+        'password'  : os.environ.get('RDS_PASSWORD', None),
+        'host'      : os.environ.get('RDS_HOST', None),
     }
 
     dburl = build_connection_url(**dbcreds)
@@ -75,8 +71,6 @@ def lambda_handler(event, context):
     engine = sa.create_engine(
                 dburl,
                 pool_recycle=30,
-                echo=True,
-                echo_pool=True,
                 connect_args={'options': '-csearch_path=common'}
             )
     

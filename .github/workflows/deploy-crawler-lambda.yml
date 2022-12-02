@@ -8,7 +8,6 @@ on:
       - src/**
       - '!src/handler/**'
       - '!src/scheduler-tr/**'
-      - '!src/crawler/**'
       - '!src/scheduler-rl/**'
   pull_request:
     branches:
@@ -17,7 +16,6 @@ on:
       - src/**
       - '!src/handler/**'
       - '!src/scheduler-tr/**'
-      - '!src/crawler/**'
       - '!src/scheduler-rl/**'
 
 jobs:
