@@ -32,9 +32,9 @@ def get_event_updates(
         stmt = stmt.on_conflict_do_update(
             index_elements=[EventsGlobal.event_id],
             set_=dict(
-                start_timestamp=stmt.excluded.start_timestamp,
-                event_status_code=stmt.excluded.event_status_code,
-                event_status_type=stmt.excluded.event_status_type
+                (x, exec(f'stmt.excluded.{x}')) 
+                for x in EventsGlobal.__table__.columns.keys()
+                if x != 'event_id'
             )
         )
         session.execute(stmt)
