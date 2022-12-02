@@ -32,9 +32,16 @@ def get_event_updates(
         stmt = stmt.on_conflict_do_update(
             index_elements=[EventsGlobal.event_id],
             set_=dict(
-                (x, exec(f'stmt.excluded.{x}')) 
-                for x in EventsGlobal.__table__.columns.keys()
-                if x != 'event_id'
+                start_timestamp=stmt.excluded.start_timestamp,
+                event_status_code=stmt.excluded.event_status_code,
+                event_status_type=stmt.excluded.event_status_type,
+                round_num=stmt.excluded.round_num,
+                hometeam_id=stmt.excluded.hometeam_id,
+                hometeam_name=stmt.excluded.hometeam_name,
+                hometeam_namecode=stmt.excluded.hometeam_namecode,
+                awayteam_id=stmt.excluded.awayteam_id,
+                awayteam_name=stmt.excluded.awayteam_name,
+                awayteam_namecode=stmt.excluded.awayteam_namecode
             )
         )
         session.execute(stmt)
