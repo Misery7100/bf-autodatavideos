@@ -21,10 +21,14 @@ def get_event_updates(
     new_events = extract_all_events_tournament(tournament_id=41087, season=16)
     extracted_event_ids = set(map(lambda x: x['event_id'], new_events))
 
+    print(f'{extracted_event_ids=}')
+
     with Session(dbengine) as session:
 
         exist_event_ids = session.query(EventsGlobal.event_id).all()
         exist_event_ids = set(map(lambda x: x._data[0], exist_event_ids))
+
+        print(f'{exist_event_ids=}')
 
         new_event_ids = list(extracted_event_ids.difference(exist_event_ids))
 
@@ -71,7 +75,9 @@ def lambda_handler(event, context):
     engine = sa.create_engine(
                 dburl,
                 pool_recycle=30,
-                connect_args={'options': '-csearch_path=common', 'connect_timeout': 45}
+                echo=True,
+                echo_pool=True,
+                connect_args={'options': '-csearch_path=common'}
             )
     
     Base.metadata.create_all(engine, Base.metadata.tables.values(), checkfirst=True)
