@@ -35,8 +35,8 @@ def send_tournament_biweekly_directly(
                 parameters_tournament = prepare_tournament_request(extracted, dbengine)
                 response = make_render_request(
                                 parameters=parameters_tournament,
-                                project_id="781c273c-8e12-4aff-b844-ab7f59284b60",
-                                template_id="21e5ad1b-dccb-44aa-a78f-0869d1cf60a9",
+                                project_id="1358e03e-16da-4c2e-9647-cf17af82b38f",
+                                template_id="836d0943-d47d-47f9-a430-5923153abc22",
                                 auth_key=auth_key
                             )
                 

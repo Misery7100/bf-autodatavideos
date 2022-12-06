@@ -178,8 +178,8 @@ def lambda_handler(event, context):
                         
                         plainly_response = make_render_request(
                             parameters=result_parameters,
-                            project_id="ee888f8c-ac76-4785-919f-afa91df19b43",
-                            template_id="d8b6cf18-45fa-4c18-b83a-4b2d8a45df1e",
+                            project_id="62a0600a-a684-4193-8f7e-c395dac30eb3",
+                            template_id="3ddfd528-4b2d-4998-a7d5-c2496bec8af6",
                             auth_key=PLAINLY_AUTH_KEY
                         )
 
